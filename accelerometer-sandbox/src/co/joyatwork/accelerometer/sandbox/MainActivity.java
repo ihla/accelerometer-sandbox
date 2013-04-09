@@ -50,7 +50,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 			// TODO Auto-generated constructor stub
 		}
     	
-    	double calculate(float vectorX, float vectorY, float vectorZ) {
+    	public double calculate(float vectorX, float vectorY, float vectorZ) {
     		if (hasLastValues == false) {
     			lastVectorX = vectorX;
     			lastVectorY = vectorY;
