@@ -1,5 +1,8 @@
 package co.joyatwork.accelerometer.sandbox;
 
+import com.androidplot.xy.BoundaryMode;
+import com.androidplot.xy.XYPlot;
+
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;
@@ -8,6 +11,8 @@ import android.view.Menu;
 public class MainActivity extends Activity {
 
     private SensorManager sensorManager;
+    
+    private XYPlot xyPlot;
 
 
 	@Override
@@ -16,7 +21,16 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-    }
+
+        //set xy plot
+        xyPlot = (XYPlot)findViewById(R.id.XYPlot);
+        xyPlot.setDomainLabel("Elapsed Time (ms)");
+        xyPlot.setRangeLabel("Acceleration (m/sec^2)");
+        xyPlot.setBorderPaint(null);
+        xyPlot.disableAllMarkup();
+        xyPlot.setRangeBoundaries(-10, 10, BoundaryMode.FIXED);
+
+	}
 
 
     @Override
