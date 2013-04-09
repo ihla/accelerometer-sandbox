@@ -1,12 +1,18 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
     tools:context=".MainActivity" >
 
- 	<com.androidplot.xy.XYPlot android:id="@+id/XYPlot"
-        android:layout_width="match_parent"
+ 	<com.androidplot.xy.XYPlot android:id="@+id/accelerationPlot"
+        android:layout_width="fill_parent"
         android:layout_height="200dp"
         title="Acceleration Plot" />
- 	    
+
+ 	<com.androidplot.xy.XYPlot android:id="@+id/cosAlphaPlot"
+      	android:layout_width="fill_parent"
+      	android:layout_height="200dp"
+      	title="cosAlpha Plot" />
+	    
 </LinearLayout>
