@@ -1,5 +1,11 @@
 package co.joyatwork.accelerometer.sandbox;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+
 import com.androidplot.xy.BoundaryMode;
 import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.LineAndPointRenderer;
@@ -21,6 +27,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private SensorManager sensorManager;
 	private Sensor accelerometer;
+
+	private static final String TAG = "AccelerationEventListener";
+    private static final char CSV_DELIM = ',';
+    private static final int THRESHHOLD = 2;
+    private static final String CSV_HEADER =
+            "X Axis,Y Axis,Z Axis,Acceleration,Time";
+
+    private PrintWriter printWriter;
 
 	private XYPlot accelerationPlot;
 	private SimpleXYSeries xAxisSeries;
@@ -81,7 +95,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
+		
 		// set xy plot
 		accelerationPlot = (XYPlot) findViewById(R.id.accelerationPlot);
 		accelerationPlot.setDomainLabel("Elapsed Time (ms)");
@@ -113,7 +127,18 @@ public class MainActivity extends Activity implements SensorEventListener {
 		cosAlphaPlot.addSeries(cosAlphaSeries, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.CYAN, Color.CYAN, null));
 		
-		
+		// Data files are stored on the external cache directory so they can
+        // be pulled off of the device by the user
+        File dataFile =
+                new File(getExternalCacheDir(), "accelerometer.csv");
+        Log.d(TAG, dataFile.getAbsolutePath());
+		try {
+			printWriter = new PrintWriter(new BufferedWriter(new FileWriter(dataFile)));
+			printWriter.println(CSV_HEADER);
+		} catch (IOException e) {
+			Log.e(TAG, "Could not open CSV file(s)", e);
+		}
+        
 		startTime = SystemClock.uptimeMillis();
 		lastChartRefresh = 0;
 	}
@@ -159,6 +184,14 @@ public class MainActivity extends Activity implements SensorEventListener {
                  + (values[2] * values[2]);
         double acceleration = Math.sqrt(sumOfSquares);
 		
+        // Write to data file
+        writeSensorEvent(printWriter,
+                         values[0],
+                         values[1],
+                         values[2],
+                         acceleration,
+                         event.timestamp);
+        
 		long current = SystemClock.uptimeMillis();
 	    
 	    // Limit how much the chart gets updated
@@ -201,6 +234,21 @@ public class MainActivity extends Activity implements SensorEventListener {
 		}
 
 		series.addLast(timestamp, value);
+	}
+
+	private void writeSensorEvent(PrintWriter printWriter, float x, float y,
+			float z, double acceleration, long eventTime) {
+		if (printWriter != null) {
+			StringBuffer sb = new StringBuffer().append(x).append(CSV_DELIM)
+					.append(y).append(CSV_DELIM).append(z).append(CSV_DELIM)
+					.append(acceleration).append(CSV_DELIM)
+					.append((eventTime / 1000000) - startTime);
+
+			printWriter.println(sb.toString());
+			if (printWriter.checkError()) {
+				Log.w(TAG, "Error writing sensor event data");
+			}
+		}
 	}
 
 }
