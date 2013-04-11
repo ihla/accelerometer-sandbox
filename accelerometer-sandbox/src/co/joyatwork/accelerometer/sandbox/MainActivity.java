@@ -133,6 +133,9 @@ public class MainActivity extends Activity implements SensorEventListener {
                 new File(getExternalCacheDir(), "accelerometer.csv");
         Log.d(TAG, dataFile.getAbsolutePath());
 		try {
+			//FileWriter calls directly OS for every write request
+			//For better performance the FileWriter is wrapped into BufferedWriter, which calls out for a batch of bytes
+			//PrintWriter allows a human-readable writing into a file
 			printWriter = new PrintWriter(new BufferedWriter(new FileWriter(dataFile)));
 			printWriter.println(CSV_HEADER);
 		} catch (IOException e) {
