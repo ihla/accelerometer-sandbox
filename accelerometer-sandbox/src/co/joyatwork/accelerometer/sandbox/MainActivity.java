@@ -32,7 +32,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final char CSV_DELIM = ',';
     private static final int THRESHHOLD = 2;
     private static final String CSV_HEADER =
-            "X Axis,Y Axis,Z Axis,Acceleration,Time";
+            "X Axis,Y Axis,Z Axis,Acceleration,CosAlpha,Time";
 
     private PrintWriter printWriter;
 
@@ -193,6 +193,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                          values[1],
                          values[2],
                          acceleration,
+                         cosA,
                          event.timestamp);
         
 		long current = SystemClock.uptimeMillis();
@@ -240,11 +241,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 	}
 
 	private void writeSensorEvent(PrintWriter printWriter, float x, float y,
-			float z, double acceleration, long eventTime) {
+			float z, double acceleration, double cosA, long eventTime) {
 		if (printWriter != null) {
 			StringBuffer sb = new StringBuffer().append(x).append(CSV_DELIM)
-					.append(y).append(CSV_DELIM).append(z).append(CSV_DELIM)
+					.append(y).append(CSV_DELIM)
+					.append(z).append(CSV_DELIM)
 					.append(acceleration).append(CSV_DELIM)
+					.append(cosA).append(CSV_DELIM)
 					.append((eventTime / 1000000) - startTime);
 
 			printWriter.println(sb.toString());
