@@ -6,6 +6,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import co.joyatwork.filters.MovingAverage;
+
 import com.androidplot.xy.BoundaryMode;
 import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.LineAndPointRenderer;
@@ -32,7 +34,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final char CSV_DELIM = ',';
     private static final int THRESHHOLD = 2;
     private static final String CSV_HEADER =
-            "X Axis,Y Axis,Z Axis,Acceleration,CosAlpha,Time";
+            "Time,X Axis,Y Axis,Z Axis,X Avg, Y Avg, Z Avg";
 
     private PrintWriter printWriter;
 
@@ -42,8 +44,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private SimpleXYSeries zAxisSeries;
 	private SimpleXYSeries accelerationSeries;
 	
-	private XYPlot cosAlphaPlot; 
-	private SimpleXYSeries cosAlphaSeries;
+	//private XYPlot cosAlphaPlot; 
+	//private SimpleXYSeries cosAlphaSeries;
+	
+	private XYPlot dataPlot;
+	private SimpleXYSeries dataPlotSeries1;
+	private SimpleXYSeries dataPlotSeries2;
 	
 	private static final int CHART_REFRESH = 10;
     private static final int MAX_SERIES_SIZE = 30;
@@ -52,6 +58,11 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private static final float ALPHA = 0.8f;
     private float[] gravity = new float[3];
+    
+    private static final int MOVING_AVG_WINDOW_SIZE = 4;
+    private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
+    		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
+    		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
     
     private class CosAlpha {
     	private float lastVectorX = 0;
@@ -87,6 +98,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
     
     private CosAlpha cosAlpha = new CosAlpha();
+	private float[] values;
+	private long sampleTime;
+	private float[] smoothedValues;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -116,7 +130,20 @@ public class MainActivity extends Activity implements SensorEventListener {
 				new LineAndPointFormatter(Color.BLUE, Color.BLUE, null));
 		accelerationPlot.addSeries(accelerationSeries, LineAndPointRenderer.class,
                   new LineAndPointFormatter(Color.CYAN, Color.CYAN, null));
-
+		
+		dataPlot = (XYPlot) findViewById(R.id.dataPlot);
+		dataPlot.setDomainLabel("Elapsed Time (ms)");
+		dataPlot.setRangeLabel("Acceleration (m/sec^2)");
+		dataPlot.setBorderPaint(null);
+		dataPlot.disableAllMarkup();
+		dataPlot.setRangeBoundaries(-3, 3, BoundaryMode.FIXED);
+		dataPlotSeries1 = new SimpleXYSeries("SZ");
+		dataPlotSeries2 = new SimpleXYSeries("FZ");
+		dataPlot.addSeries(dataPlotSeries1, LineAndPointRenderer.class,
+				new LineAndPointFormatter(Color.BLUE, Color.BLUE, null));
+		dataPlot.addSeries(dataPlotSeries2, LineAndPointRenderer.class,
+				new LineAndPointFormatter(Color.RED, Color.RED, null));
+		/*
 		cosAlphaPlot = (XYPlot) findViewById(R.id.cosAlphaPlot);
 		cosAlphaPlot.setDomainLabel("Elapsed Time (ms)");
 		cosAlphaPlot.setRangeLabel("Cos Alpha");
@@ -126,12 +153,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 		cosAlphaSeries = new SimpleXYSeries("cos");
 		cosAlphaPlot.addSeries(cosAlphaSeries, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.CYAN, Color.CYAN, null));
+		*/
 		
 		// Data files are stored on the external cache directory so they can
         // be pulled off of the device by the user
-        File dataFile =
-                new File(getExternalCacheDir(), "accelerometer.csv");
-        Log.d(TAG, dataFile.getAbsolutePath());
+        File dataFile = new File(getExternalCacheDir(), "accelerometer.csv");
+        //Log.d(TAG, dataFile.getAbsolutePath());
 		try {
 			//FileWriter calls directly OS for every write request
 			//For better performance the FileWriter is wrapped into BufferedWriter, which calls out for a batch of bytes
@@ -176,61 +203,73 @@ public class MainActivity extends Activity implements SensorEventListener {
 	public void onSensorChanged(SensorEvent event) {
 
 		//Log.d("acc-sensor", " -x " + event.values[0] + " -y " + event.values[1] + " -z " + event.values[2]);
-		double cosA = cosAlpha.calculate(event.values[0], event.values[1], event.values[2]);
 		
 		
-		float[] values = event.values.clone();
+		values = event.values.clone(); //TODO cloning might cause bad performance!!!
+		sampleTime = event.timestamp;
         values = highPass(values[0], values[1], values[2]);
+        
+        smoothedValues = smoothValues(values);
 		
+        /*
 		double sumOfSquares = (values[0] * values[0])
                  + (values[1] * values[1])
                  + (values[2] * values[2]);
-        double acceleration = Math.sqrt(sumOfSquares);
-		
-        // Write to data file
-        writeSensorEvent(printWriter,
-                         values[0],
-                         values[1],
-                         values[2],
-                         acceleration,
-                         cosA,
-                         event.timestamp);
+        */
+        //double acceleration = Math.sqrt(sumOfSquares);
         
+		//double cosA = cosAlpha.calculate(event.values[0], event.values[1], event.values[2]);
+		
+        writeData();
+ 	    plotData();
+	}
+
+	private float[] smoothValues(float[] values) {
+		movingAvgCalculators[0].pushValue(values[0]);
+		movingAvgCalculators[1].pushValue(values[1]);
+		movingAvgCalculators[2].pushValue(values[2]);
+		
+		float[] retVal = new float[3];
+		retVal[0] = movingAvgCalculators[0].getValue();
+		retVal[1] = movingAvgCalculators[1].getValue();
+		retVal[2] = movingAvgCalculators[2].getValue();
+		return retVal;
+	}
+
+	private float[] highPass(float x, float y, float z) {
+		float[] filteredValues = new float[3];
+
+		gravity[0] = ALPHA * gravity[0] + (1 - ALPHA) * x;
+		gravity[1] = ALPHA * gravity[1] + (1 - ALPHA) * y;
+		gravity[2] = ALPHA * gravity[2] + (1 - ALPHA) * z;
+
+		filteredValues[0] = x - gravity[0];
+		filteredValues[1] = y - gravity[1];
+		filteredValues[2] = z - gravity[2];
+
+		return filteredValues;
+	}
+
+	private void plotData() {
 		long current = SystemClock.uptimeMillis();
-	    
-	    // Limit how much the chart gets updated
+		// Limit how much the chart gets updated
 	    if ((current - lastChartRefresh) >= CHART_REFRESH) {
-	        long timestamp = (event.timestamp / 1000000) - startTime;
+	        long timestamp = (sampleTime / 1000000) - startTime;
 	        
 	        // Plot data
 	        addDataPoint(xAxisSeries, timestamp, values[0]);
 	        addDataPoint(yAxisSeries, timestamp, values[1]);
 	        addDataPoint(zAxisSeries, timestamp, values[2]);
-	        addDataPoint(accelerationSeries, timestamp, acceleration);
-	        
-	        addDataPoint(cosAlphaSeries, timestamp, cosA);
-	        
 	        accelerationPlot.redraw();
-	        cosAlphaPlot.redraw();
+	        
+	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
+	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
+	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
 	    }
 	}
 
-	 private float[] highPass(float x, float y, float z)
-	    {
-	        float[] filteredValues = new float[3];
-	        
-	        gravity[0] = ALPHA * gravity[0] + (1 - ALPHA) * x;
-	        gravity[1] = ALPHA * gravity[1] + (1 - ALPHA) * y;
-	        gravity[2] = ALPHA * gravity[2] + (1 - ALPHA) * z;
-
-	        filteredValues[0] = x - gravity[0];
-	        filteredValues[1] = y - gravity[1];
-	        filteredValues[2] = z - gravity[2];
-	        
-	        return filteredValues;
-	    }
 	private void addDataPoint(SimpleXYSeries series, Number timestamp,
 			Number value) {
 		if (series.size() == MAX_SERIES_SIZE) {
@@ -240,15 +279,17 @@ public class MainActivity extends Activity implements SensorEventListener {
 		series.addLast(timestamp, value);
 	}
 
-	private void writeSensorEvent(PrintWriter printWriter, float x, float y,
-			float z, double acceleration, double cosA, long eventTime) {
+	private void writeData() {
 		if (printWriter != null) {
-			StringBuffer sb = new StringBuffer().append(x).append(CSV_DELIM)
-					.append(y).append(CSV_DELIM)
-					.append(z).append(CSV_DELIM)
-					.append(acceleration).append(CSV_DELIM)
-					.append(cosA).append(CSV_DELIM)
-					.append((eventTime / 1000000) - startTime);
+			StringBuffer sb = new StringBuffer()
+				.append((sampleTime / 1000000) - startTime).append(CSV_DELIM)
+				.append(values[0]).append(CSV_DELIM) // x
+				.append(values[1]).append(CSV_DELIM) // y
+				.append(values[2]).append(CSV_DELIM) // z
+				.append(smoothedValues[0]).append(CSV_DELIM)
+				.append(smoothedValues[1]).append(CSV_DELIM)
+				.append(smoothedValues[2])
+				;
 
 			printWriter.println(sb.toString());
 			if (printWriter.checkError()) {
