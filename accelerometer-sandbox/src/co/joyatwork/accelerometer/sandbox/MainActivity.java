@@ -34,7 +34,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final char CSV_DELIM = ',';
     private static final int THRESHHOLD = 2;
     private static final String CSV_HEADER =
-            "Time,X Axis,Y Axis,Z Axis,X Avg, Y Avg, Z Avg";
+            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld";
 
     private PrintWriter printWriter;
 
@@ -59,10 +59,66 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final float ALPHA = 0.8f;
     private float[] gravity = new float[3];
     
-    private static final int MOVING_AVG_WINDOW_SIZE = 4;
+    private static final int MOVING_AVG_WINDOW_SIZE = 8;
     private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
+    
+    private class Treshold {
+    	
+    	private final static String TAG = "Trashold";
+    	private final int windowSize;
+		private float currentMinValue;
+		private float currentMaxValue;
+		private int sampleCount;
+		private float minValue;
+		private float maxValue;
+
+		public Treshold(int numberOfSamples) {
+    		this.windowSize = numberOfSamples;
+    		this.currentMinValue = 0;
+    		this.currentMaxValue = 0;
+    		this.sampleCount = 0; 
+    		this.minValue = 0;
+    		this.maxValue = 0;
+    	}
+		
+		public void pushSample(float newSample) {
+			if (newSample < currentMinValue) {
+				currentMinValue = newSample;
+			}
+			else if (newSample > currentMaxValue) {
+				currentMaxValue = newSample;
+			}
+			sampleCount++;
+			//Log.d(TAG, "current cnt: " + sampleCount + "min " + currentMinValue + "max " + currentMaxValue);
+			if (sampleCount == windowSize) {
+				sampleCount = 0;
+				minValue = currentMinValue;
+				maxValue = currentMaxValue;
+				currentMinValue = currentMaxValue = 0;
+				//Log.d(TAG, "min: " + minValue + "max: " + maxValue + "treshold: " + calculate());
+			}
+		}
+		
+		public float getMinValue(){
+			return minValue;
+		}
+		
+		public float getMaxValue() {
+			return maxValue;
+		}
+		
+		public float calculate() {
+			return (minValue + maxValue)/2;
+		}
+    }
+    
+    private static final int TRESHOLD_WINDOW_SIZE = 50;
+    private Treshold[] trasholds = { new Treshold(TRESHOLD_WINDOW_SIZE), 
+    		new Treshold(TRESHOLD_WINDOW_SIZE),
+    		new Treshold(TRESHOLD_WINDOW_SIZE)
+    };
     
     private class CosAlpha {
     	private float lastVectorX = 0;
@@ -101,6 +157,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] values;
 	private long sampleTime;
 	private float[] smoothedValues;
+	private float[] tresholdValues;
+	private SimpleXYSeries dataPlotSeries3;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -137,12 +195,15 @@ public class MainActivity extends Activity implements SensorEventListener {
 		dataPlot.setBorderPaint(null);
 		dataPlot.disableAllMarkup();
 		dataPlot.setRangeBoundaries(-3, 3, BoundaryMode.FIXED);
-		dataPlotSeries1 = new SimpleXYSeries("SZ");
-		dataPlotSeries2 = new SimpleXYSeries("FZ");
+		dataPlotSeries1 = new SimpleXYSeries("Z sample");
+		dataPlotSeries2 = new SimpleXYSeries("Z avg");
+		dataPlotSeries3 = new SimpleXYSeries("Z thold");
 		dataPlot.addSeries(dataPlotSeries1, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.BLUE, Color.BLUE, null));
 		dataPlot.addSeries(dataPlotSeries2, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.RED, Color.RED, null));
+		dataPlot.addSeries(dataPlotSeries3, LineAndPointRenderer.class,
+				new LineAndPointFormatter(Color.YELLOW, Color.YELLOW, null));
 		/*
 		cosAlphaPlot = (XYPlot) findViewById(R.id.cosAlphaPlot);
 		cosAlphaPlot.setDomainLabel("Elapsed Time (ms)");
@@ -210,18 +271,22 @@ public class MainActivity extends Activity implements SensorEventListener {
         values = highPass(values[0], values[1], values[2]);
         
         smoothedValues = smoothValues(values);
-		
-        /*
-		double sumOfSquares = (values[0] * values[0])
-                 + (values[1] * values[1])
-                 + (values[2] * values[2]);
-        */
-        //double acceleration = Math.sqrt(sumOfSquares);
-        
-		//double cosA = cosAlpha.calculate(event.values[0], event.values[1], event.values[2]);
-		
+		tresholdValues = calculateTreshold(smoothedValues); 
+ 
         writeData();
  	    plotData();
+	}
+
+	private float[] calculateTreshold(float[] values) {
+		trasholds[0].pushSample(values[0]);
+		trasholds[1].pushSample(values[1]);
+		trasholds[2].pushSample(values[2]);
+		
+		float[] returnValues = new float[3];
+		returnValues[0] = trasholds[0].calculate();
+		returnValues[1] = trasholds[1].calculate();
+		returnValues[2] = trasholds[2].calculate();
+		return returnValues;
 	}
 
 	private float[] smoothValues(float[] values) {
@@ -264,6 +329,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        
 	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
 	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
+	        addDataPoint(dataPlotSeries3, timestamp, tresholdValues[2]);
 	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
@@ -288,7 +354,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(values[2]).append(CSV_DELIM) // z
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
-				.append(smoothedValues[2])
+				.append(smoothedValues[2]).append(CSV_DELIM)
+				.append(tresholdValues[0]).append(CSV_DELIM)
+				.append(tresholdValues[1]).append(CSV_DELIM)
+				.append(tresholdValues[2])
 				;
 
 			printWriter.println(sb.toString());
