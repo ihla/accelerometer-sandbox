@@ -32,9 +32,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private static final String TAG = "AccelerationEventListener";
     private static final char CSV_DELIM = ',';
-    private static final int THRESHHOLD = 2;
     private static final String CSV_HEADER =
-            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld";
+            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld,Min Z,Max Z";
 
     private PrintWriter printWriter;
 
@@ -59,20 +58,21 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final float ALPHA = 0.8f;
     private float[] gravity = new float[3];
     
-    private static final int MOVING_AVG_WINDOW_SIZE = 8;
+    private static final int MOVING_AVG_WINDOW_SIZE = 10;
     private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
     
     private class Treshold {
     	
-    	private final static String TAG = "Trashold";
+    	private final static String TAG = "Treshold";
     	private final int windowSize;
 		private float currentMinValue;
 		private float currentMaxValue;
 		private int sampleCount;
 		private float minValue;
 		private float maxValue;
+		private boolean isFirstCall;
 
 		public Treshold(int numberOfSamples) {
     		this.windowSize = numberOfSamples;
@@ -81,9 +81,14 @@ public class MainActivity extends Activity implements SensorEventListener {
     		this.sampleCount = 0; 
     		this.minValue = 0;
     		this.maxValue = 0;
+    		this.isFirstCall = true;
     	}
 		
 		public void pushSample(float newSample) {
+			if (isFirstCall) {
+				isFirstCall = false;
+				currentMaxValue = currentMinValue = newSample;
+			}
 			if (newSample < currentMinValue) {
 				currentMinValue = newSample;
 			}
@@ -96,7 +101,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 				sampleCount = 0;
 				minValue = currentMinValue;
 				maxValue = currentMaxValue;
-				currentMinValue = currentMaxValue = 0;
+				currentMinValue = currentMaxValue = newSample;
 				//Log.d(TAG, "min: " + minValue + "max: " + maxValue + "treshold: " + calculate());
 			}
 		}
@@ -115,7 +120,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
     
     private static final int TRESHOLD_WINDOW_SIZE = 50;
-    private Treshold[] trasholds = { new Treshold(TRESHOLD_WINDOW_SIZE), 
+    private Treshold[] tresholds = { new Treshold(TRESHOLD_WINDOW_SIZE), 
     		new Treshold(TRESHOLD_WINDOW_SIZE),
     		new Treshold(TRESHOLD_WINDOW_SIZE)
     };
@@ -278,14 +283,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 	}
 
 	private float[] calculateTreshold(float[] values) {
-		trasholds[0].pushSample(values[0]);
-		trasholds[1].pushSample(values[1]);
-		trasholds[2].pushSample(values[2]);
+		tresholds[0].pushSample(values[0]);
+		tresholds[1].pushSample(values[1]);
+		tresholds[2].pushSample(values[2]);
 		
 		float[] returnValues = new float[3];
-		returnValues[0] = trasholds[0].calculate();
-		returnValues[1] = trasholds[1].calculate();
-		returnValues[2] = trasholds[2].calculate();
+		returnValues[0] = tresholds[0].calculate();
+		returnValues[1] = tresholds[1].calculate();
+		returnValues[2] = tresholds[2].calculate();
 		return returnValues;
 	}
 
@@ -357,7 +362,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(smoothedValues[2]).append(CSV_DELIM)
 				.append(tresholdValues[0]).append(CSV_DELIM)
 				.append(tresholdValues[1]).append(CSV_DELIM)
-				.append(tresholdValues[2])
+				.append(tresholdValues[2]).append(CSV_DELIM)
+				.append(tresholds[2].getMinValue()).append(CSV_DELIM)
+				.append(tresholds[2].getMaxValue())
 				;
 
 			printWriter.println(sb.toString());
