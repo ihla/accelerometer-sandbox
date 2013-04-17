@@ -63,31 +63,44 @@ public class MainActivity extends Activity implements SensorEventListener {
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
     
-    private class Treshold {
+    private class Threshold {
     	
-    	private final static String TAG = "Treshold";
+    	private final static String TAG = "Threshold";
     	private final int windowSize;
 		private float currentMinValue;
 		private float currentMaxValue;
 		private int sampleCount;
 		private float minValue;
 		private float maxValue;
-		private boolean isFirstCall;
+		private float lastSample;
+		private float lastSignum;
+		private boolean signumChanged;
+		private boolean isFirstSample;
+		private float firstSample;
+		private boolean isFirstWindow;
+		
 
-		public Treshold(int numberOfSamples) {
+		public Threshold(int numberOfSamples) {
     		this.windowSize = numberOfSamples;
     		this.currentMinValue = 0;
     		this.currentMaxValue = 0;
     		this.sampleCount = 0; 
     		this.minValue = 0;
     		this.maxValue = 0;
-    		this.isFirstCall = true;
+    		this.lastSample = 0;
+    		this.lastSignum = 0;
+    		this.signumChanged = false;
+    		this.isFirstSample = true;
+    		this.isFirstWindow = true;
     	}
 		
 		public void pushSample(float newSample) {
-			if (isFirstCall) {
-				isFirstCall = false;
-				currentMaxValue = currentMinValue = newSample;
+			
+			if (isFirstSample) {
+				isFirstSample = false;
+				firstSample = newSample;
+				currentMinValue = currentMaxValue = firstSample;
+				return;
 			}
 			if (newSample < currentMinValue) {
 				currentMinValue = newSample;
@@ -99,6 +112,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 			//Log.d(TAG, "current cnt: " + sampleCount + "min " + currentMinValue + "max " + currentMaxValue);
 			if (sampleCount == windowSize) {
 				sampleCount = 0;
+				if (isFirstWindow) {
+					isFirstWindow = false;
+					if ((firstSample == currentMinValue) || (firstSample == currentMaxValue)) {
+						currentMinValue = currentMaxValue = newSample;
+						return;
+					}
+				}
 				minValue = currentMinValue;
 				maxValue = currentMaxValue;
 				currentMinValue = currentMaxValue = newSample;
@@ -119,10 +139,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 		}
     }
     
-    private static final int TRESHOLD_WINDOW_SIZE = 50;
-    private Treshold[] tresholds = { new Treshold(TRESHOLD_WINDOW_SIZE), 
-    		new Treshold(TRESHOLD_WINDOW_SIZE),
-    		new Treshold(TRESHOLD_WINDOW_SIZE)
+    private static final int THRESHOLD_WINDOW_SIZE = 50;
+    private Threshold[] thresholds = { new Threshold(THRESHOLD_WINDOW_SIZE), 
+    		new Threshold(THRESHOLD_WINDOW_SIZE),
+    		new Threshold(THRESHOLD_WINDOW_SIZE)
     };
     
     private class CosAlpha {
@@ -162,7 +182,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] values;
 	private long sampleTime;
 	private float[] smoothedValues;
-	private float[] tresholdValues;
+	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
     
 	@Override
@@ -276,21 +296,21 @@ public class MainActivity extends Activity implements SensorEventListener {
         values = highPass(values[0], values[1], values[2]);
         
         smoothedValues = smoothValues(values);
-		tresholdValues = calculateTreshold(smoothedValues); 
+		thresholdValues = calculateThreshold(smoothedValues); 
  
         writeData();
  	    plotData();
 	}
 
-	private float[] calculateTreshold(float[] values) {
-		tresholds[0].pushSample(values[0]);
-		tresholds[1].pushSample(values[1]);
-		tresholds[2].pushSample(values[2]);
+	private float[] calculateThreshold(float[] values) {
+		thresholds[0].pushSample(values[0]);
+		thresholds[1].pushSample(values[1]);
+		thresholds[2].pushSample(values[2]);
 		
 		float[] returnValues = new float[3];
-		returnValues[0] = tresholds[0].calculate();
-		returnValues[1] = tresholds[1].calculate();
-		returnValues[2] = tresholds[2].calculate();
+		returnValues[0] = thresholds[0].calculate();
+		returnValues[1] = thresholds[1].calculate();
+		returnValues[2] = thresholds[2].calculate();
 		return returnValues;
 	}
 
@@ -334,7 +354,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        
 	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
 	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
-	        addDataPoint(dataPlotSeries3, timestamp, tresholdValues[2]);
+	        addDataPoint(dataPlotSeries3, timestamp, thresholdValues[2]);
 	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
@@ -360,11 +380,11 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
 				.append(smoothedValues[2]).append(CSV_DELIM)
-				.append(tresholdValues[0]).append(CSV_DELIM)
-				.append(tresholdValues[1]).append(CSV_DELIM)
-				.append(tresholdValues[2]).append(CSV_DELIM)
-				.append(tresholds[2].getMinValue()).append(CSV_DELIM)
-				.append(tresholds[2].getMaxValue())
+				.append(thresholdValues[0]).append(CSV_DELIM)
+				.append(thresholdValues[1]).append(CSV_DELIM)
+				.append(thresholdValues[2]).append(CSV_DELIM)
+				.append(thresholds[2].getMinValue()).append(CSV_DELIM)
+				.append(thresholds[2].getMaxValue())
 				;
 
 			printWriter.println(sb.toString());
