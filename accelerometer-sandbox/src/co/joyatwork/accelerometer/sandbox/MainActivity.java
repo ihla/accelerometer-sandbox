@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Currency;
 
 import co.joyatwork.filters.MovingAverage;
 
@@ -33,7 +34,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private static final String TAG = "AccelerationEventListener";
     private static final char CSV_DELIM = ',';
     private static final String CSV_HEADER =
-            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld,Min Z,Max Z";
+            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld,Min Z,Max Z,step";
 
     private PrintWriter printWriter;
 
@@ -67,14 +68,13 @@ public class MainActivity extends Activity implements SensorEventListener {
     	
     	private final static String TAG = "Threshold";
     	private final int windowSize;
+		private float measuredMinValue;
+		private float measuredMaxValue;
 		private float currentMinValue;
 		private float currentMaxValue;
 		private int sampleCount;
 		private float minValue;
 		private float maxValue;
-		private float lastSample;
-		private float lastSignum;
-		private boolean signumChanged;
 		private boolean isFirstSample;
 		private float firstSample;
 		private boolean isFirstWindow;
@@ -82,14 +82,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 		public Threshold(int numberOfSamples) {
     		this.windowSize = numberOfSamples;
-    		this.currentMinValue = 0;
+    		this.measuredMinValue = 0;
+    		this.measuredMaxValue = 0;
     		this.currentMaxValue = 0;
+    		this.currentMinValue = 0;
     		this.sampleCount = 0; 
     		this.minValue = 0;
     		this.maxValue = 0;
-    		this.lastSample = 0;
-    		this.lastSignum = 0;
-    		this.signumChanged = false;
     		this.isFirstSample = true;
     		this.isFirstWindow = true;
     	}
@@ -99,14 +98,18 @@ public class MainActivity extends Activity implements SensorEventListener {
 			if (isFirstSample) {
 				isFirstSample = false;
 				firstSample = newSample;
-				currentMinValue = currentMaxValue = firstSample;
+				measuredMinValue = measuredMaxValue = firstSample;
+				currentMaxValue = measuredMaxValue;
+				currentMinValue = measuredMinValue;
 				return;
 			}
-			if (newSample < currentMinValue) {
-				currentMinValue = newSample;
+			if (newSample < measuredMinValue) {
+				measuredMinValue = newSample;
+				currentMinValue = measuredMinValue;
 			}
-			else if (newSample > currentMaxValue) {
-				currentMaxValue = newSample;
+			else if (newSample > measuredMaxValue) {
+				measuredMaxValue = newSample;
+				currentMaxValue = measuredMaxValue;
 			}
 			sampleCount++;
 			//Log.d(TAG, "current cnt: " + sampleCount + "min " + currentMinValue + "max " + currentMaxValue);
@@ -114,16 +117,26 @@ public class MainActivity extends Activity implements SensorEventListener {
 				sampleCount = 0;
 				if (isFirstWindow) {
 					isFirstWindow = false;
-					if ((firstSample == currentMinValue) || (firstSample == currentMaxValue)) {
-						currentMinValue = currentMaxValue = newSample;
+					if ((firstSample == measuredMinValue) || (firstSample == measuredMaxValue)) {
+						measuredMinValue = measuredMaxValue = newSample;
+						currentMaxValue = measuredMaxValue;
+						currentMinValue = measuredMinValue;
 						return;
 					}
 				}
-				minValue = currentMinValue;
-				maxValue = currentMaxValue;
-				currentMinValue = currentMaxValue = newSample;
+				minValue = measuredMinValue;
+				maxValue = measuredMaxValue;
+				measuredMinValue = measuredMaxValue = newSample;
 				//Log.d(TAG, "min: " + minValue + "max: " + maxValue + "treshold: " + calculate());
 			}
+		}
+		
+		public float getCurrentMinValue() {
+			return currentMinValue;
+		}
+		
+		public float getCurrentMaxValue() {
+			return currentMaxValue;
 		}
 		
 		public float getMinValue(){
@@ -184,6 +197,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] smoothedValues;
 	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
+	private float[] oldValues;
+	private float step;
+	private SimpleXYSeries dataPlotSeries4;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -192,6 +208,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		
+		oldValues = new float[3];
+		oldValues[0] = 0;
+		oldValues[1] = 0;
+		oldValues[2] = 0;
+		step = -0.5F;
 		
 		// set xy plot
 		accelerationPlot = (XYPlot) findViewById(R.id.accelerationPlot);
@@ -223,12 +245,15 @@ public class MainActivity extends Activity implements SensorEventListener {
 		dataPlotSeries1 = new SimpleXYSeries("Z sample");
 		dataPlotSeries2 = new SimpleXYSeries("Z avg");
 		dataPlotSeries3 = new SimpleXYSeries("Z thold");
+		dataPlotSeries4 = new SimpleXYSeries("step");
 		dataPlot.addSeries(dataPlotSeries1, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.BLUE, Color.BLUE, null));
 		dataPlot.addSeries(dataPlotSeries2, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.RED, Color.RED, null));
 		dataPlot.addSeries(dataPlotSeries3, LineAndPointRenderer.class,
 				new LineAndPointFormatter(Color.YELLOW, Color.YELLOW, null));
+		dataPlot.addSeries(dataPlotSeries4, LineAndPointRenderer.class,
+				new LineAndPointFormatter(Color.MAGENTA, Color.MAGENTA, null));
 		/*
 		cosAlphaPlot = (XYPlot) findViewById(R.id.cosAlphaPlot);
 		cosAlphaPlot.setDomainLabel("Elapsed Time (ms)");
@@ -296,7 +321,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         values = highPass(values[0], values[1], values[2]);
         
         smoothedValues = smoothValues(values);
-		thresholdValues = calculateThreshold(smoothedValues); 
+		thresholdValues = calculateThreshold(smoothedValues);
+		
+		if (thresholds[2].getCurrentMaxValue() > 0.3F && oldValues[2] > thresholdValues[2] && smoothedValues[2] < thresholdValues[2]) {
+			step *= -1;
+		}
+		oldValues[2] = smoothedValues[2];
  
         writeData();
  	    plotData();
@@ -355,6 +385,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
 	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
 	        addDataPoint(dataPlotSeries3, timestamp, thresholdValues[2]);
+	        addDataPoint(dataPlotSeries4, timestamp, step);
 	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
@@ -384,7 +415,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(thresholdValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
 				.append(thresholds[2].getMinValue()).append(CSV_DELIM)
-				.append(thresholds[2].getMaxValue())
+				.append(thresholds[2].getMaxValue()).append(CSV_DELIM)
+				.append(step)
 				;
 
 			printWriter.println(sb.toString());
