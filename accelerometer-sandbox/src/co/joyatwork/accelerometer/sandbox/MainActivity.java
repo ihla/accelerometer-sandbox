@@ -25,6 +25,7 @@ import android.os.SystemClock;
 import android.app.Activity;
 import android.util.Log;
 import android.view.Menu;
+import android.widget.TextView;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
@@ -198,8 +199,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
 	private float[] oldValues;
-	private float step;
+	private float zStep;
 	private SimpleXYSeries dataPlotSeries4;
+	private int zStepsCount;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -213,7 +215,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 		oldValues[0] = 0;
 		oldValues[1] = 0;
 		oldValues[2] = 0;
-		step = -0.5F;
+		zStep = -0.5F;
+		zStepsCount = 0;
 		
 		// set xy plot
 		accelerationPlot = (XYPlot) findViewById(R.id.accelerationPlot);
@@ -318,18 +321,29 @@ public class MainActivity extends Activity implements SensorEventListener {
 		
 		values = event.values.clone(); //TODO cloning might cause bad performance!!!
 		sampleTime = event.timestamp;
-        values = highPass(values[0], values[1], values[2]);
         
+		values = highPass(values);
         smoothedValues = smoothValues(values);
 		thresholdValues = calculateThreshold(smoothedValues);
+		int[] stepCounts = countSteps();
 		
+ 
+		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
+		zStepsCountView.setText("" + stepCounts[2]);
+
+		writeData();
+ 	    plotData();
+	}
+
+	private int[] countSteps() {
+		int[] returnValues = new int[3];
 		if (thresholds[2].getCurrentMaxValue() > 0.3F && oldValues[2] > thresholdValues[2] && smoothedValues[2] < thresholdValues[2]) {
-			step *= -1;
+			zStep *= -1;
+			zStepsCount++;
 		}
 		oldValues[2] = smoothedValues[2];
- 
-        writeData();
- 	    plotData();
+		returnValues[2] = zStepsCount;
+		return returnValues;
 	}
 
 	private float[] calculateThreshold(float[] values) {
@@ -356,16 +370,16 @@ public class MainActivity extends Activity implements SensorEventListener {
 		return retVal;
 	}
 
-	private float[] highPass(float x, float y, float z) {
+	private float[] highPass(float[] values) {
 		float[] filteredValues = new float[3];
 
-		gravity[0] = ALPHA * gravity[0] + (1 - ALPHA) * x;
-		gravity[1] = ALPHA * gravity[1] + (1 - ALPHA) * y;
-		gravity[2] = ALPHA * gravity[2] + (1 - ALPHA) * z;
+		gravity[0] = ALPHA * gravity[0] + (1 - ALPHA) * values[0];
+		gravity[1] = ALPHA * gravity[1] + (1 - ALPHA) * values[1];
+		gravity[2] = ALPHA * gravity[2] + (1 - ALPHA) * values[2];
 
-		filteredValues[0] = x - gravity[0];
-		filteredValues[1] = y - gravity[1];
-		filteredValues[2] = z - gravity[2];
+		filteredValues[0] = values[0] - gravity[0];
+		filteredValues[1] = values[1] - gravity[1];
+		filteredValues[2] = values[2] - gravity[2];
 
 		return filteredValues;
 	}
@@ -385,7 +399,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
 	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
 	        addDataPoint(dataPlotSeries3, timestamp, thresholdValues[2]);
-	        addDataPoint(dataPlotSeries4, timestamp, step);
+	        addDataPoint(dataPlotSeries4, timestamp, zStep);
 	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
@@ -416,7 +430,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(thresholdValues[2]).append(CSV_DELIM)
 				.append(thresholds[2].getMinValue()).append(CSV_DELIM)
 				.append(thresholds[2].getMaxValue()).append(CSV_DELIM)
-				.append(step)
+				.append(zStep)
 				;
 
 			printWriter.println(sb.toString());

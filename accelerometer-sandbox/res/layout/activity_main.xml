@@ -1,18 +1,96 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
+    android:orientation="vertical"
     tools:context=".MainActivity" >
 
- 	<com.androidplot.xy.XYPlot android:id="@+id/accelerationPlot"
+    <com.androidplot.xy.XYPlot
+        android:id="@+id/accelerationPlot"
         android:layout_width="fill_parent"
         android:layout_height="200dp"
         title="Acceleration Plot" />
 
- 	<com.androidplot.xy.XYPlot android:id="@+id/dataPlot"
-      	android:layout_width="fill_parent"
-      	android:layout_height="200dp"
-      	title="cosAlpha Plot" />
-	    
-</LinearLayout>
+    <com.androidplot.xy.XYPlot
+        android:id="@+id/dataPlot"
+        android:layout_width="fill_parent"
+        android:layout_height="200dp"
+        android:layout_below="@id/accelerationPlot"
+        title="Data Plot" />
+
+<!-- 
+    -->
+
+    <TextView
+        android:id="@+id/xStepsTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/dataPlot"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:gravity="center"
+        android:textColor="#F00"
+        android:text="X-Steps" >
+
+        <requestFocus />
+    </TextView>
+
+    <TextView
+        android:id="@+id/xStepsCountTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/xStepsTextView"
+        android:layout_toRightOf="@+id/xStepsTextView"
+        android:ems="10"
+        android:hint="0"
+        android:textColor="#F00"
+        android:inputType="number"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/yStepsTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/xStepsTextView"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:textColor="#0F0"
+        android:gravity="center"
+        android:text="Y-Steps" />
+
+    <TextView
+        android:id="@+id/yStepsCountTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/xStepsCountTextView"
+        android:layout_alignTop="@+id/yStepsTextView"
+        android:ems="10"
+        android:textColor="#0F0"
+        android:inputType="number"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/zStepsTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/yStepsTextView"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:gravity="center"
+        android:textColor="#00F"
+        android:text="Z-Steps" />
+
+    <TextView
+        android:id="@+id/zStepsCountTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/yStepsCountTextView"
+        android:layout_alignTop="@+id/zStepsTextView"
+        android:ems="10"
+        android:textColor="#00F"
+        android:inputType="number"
+        android:text="0" />
+    
+</RelativeLayout>
