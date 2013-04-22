@@ -3,17 +3,8 @@ package co.joyatwork.pedometer;
 import co.joyatwork.filters.MovingAverage;
 
 public class StepDetector {
-	public static final int X_AXIS = 0;
-	public static final int Y_AXIS = 1;
-	public static final int Z_AXIS = 2;
 
-    private static final int MOVING_AVG_WINDOW_SIZE = 10;
-    private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
-    		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
-    		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
-	private float[] smoothedAccelerationVector = new float[3];
-
-    public class Threshold {
+	public class Threshold {
     	
     	private final static String TAG = "Threshold";
     	private final int windowSize;
@@ -101,27 +92,83 @@ public class StepDetector {
 		}
     }
 
+	private class StepCounter {
+		
+		private Threshold threshold;
+		private int stepCount;
+		private float lastSample;
+		private float thresholdValue;
+		
+		public StepCounter(Threshold t) {
+			threshold = t;
+			stepCount = 0; 
+			lastSample = 0;
+			thresholdValue = 0;
+		}
+	
+	    /**
+	     * Calculates thresholds for step detections
+	     */
+		private void calculateThresholdValue(float newSample) {
+			threshold.pushSample(newSample);
+			thresholdValue = threshold.calculate();
+		}
+
+		public int update(float newSample) {
+			calculateThresholdValue(newSample);
+			//TODO threshold.getCurrentMaxValue() > 0.3F - how to ignore low values?
+			if (threshold.getCurrentMaxValue() > 0.3F && lastSample > thresholdValue && newSample < thresholdValue) {
+				stepCount++;
+			}
+			lastSample = newSample;
+			return stepCount;
+		}
+		
+		public float getThresholdValue() {
+			return thresholdValue;
+		}
+		
+		public int getValue() {
+			return stepCount;
+		}
+
+	}
+	
+	public static final int X_AXIS = 0;
+	public static final int Y_AXIS = 1;
+	public static final int Z_AXIS = 2;
+
+    private static final int MOVING_AVG_WINDOW_SIZE = 10;
+    private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
+    		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
+    		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
+	private float[] smoothedAccelerationVector = new float[3];
+
     private static final int THRESHOLD_WINDOW_SIZE = 50;
-    private Threshold[] thresholdCalculators = { new Threshold(THRESHOLD_WINDOW_SIZE), 
+    private Threshold[] thresholdCalculator = { new Threshold(THRESHOLD_WINDOW_SIZE), 
     		new Threshold(THRESHOLD_WINDOW_SIZE),
     		new Threshold(THRESHOLD_WINDOW_SIZE)
     };
-	private float[] thresholdValues = new float[3];
+	
+	private StepCounter[] stepCounters = { new StepCounter(thresholdCalculator[X_AXIS]),
+			new StepCounter(thresholdCalculator[Y_AXIS]),
+			new StepCounter(thresholdCalculator[Z_AXIS])
+	};
 
     private static final float ALPHA = 0.8f;
     private float[] gravity = new float[3];
 	private float[] linearAccelerationVector = new float[3];
 	private float[] lastStepCounters = new float[3];
-	private int[] stepCounters = new int[3];
+	private int[] stepCnt = new int[3];
 	
 	public StepDetector() {
 		lastStepCounters[X_AXIS] = 0;
 		lastStepCounters[Y_AXIS] = 0;
 		lastStepCounters[Z_AXIS] = 0;
 		
-		stepCounters[X_AXIS] = 0;
-		stepCounters[Y_AXIS] = 0;
-		stepCounters[Z_AXIS] = 0;
+		stepCnt[X_AXIS] = 0;
+		stepCnt[Y_AXIS] = 0;
+		stepCnt[Z_AXIS] = 0;
 	}
 	
 	/**
@@ -155,35 +202,23 @@ public class StepDetector {
 	
     //TODO remove
     public Threshold[] getThresholds() {
-    	return thresholdCalculators;
+    	return thresholdCalculator;
     }
     
-    /**
-     * Calculates thresholds for step detections
-     */
-	private void calculateThresholds() {
-		thresholdCalculators[X_AXIS].pushSample(smoothedAccelerationVector[X_AXIS]);
-		thresholdCalculators[Y_AXIS].pushSample(smoothedAccelerationVector[Y_AXIS]);
-		thresholdCalculators[Z_AXIS].pushSample(smoothedAccelerationVector[Z_AXIS]);
-		
-		thresholdValues[X_AXIS] = thresholdCalculators[X_AXIS].calculate();
-		thresholdValues[Y_AXIS] = thresholdCalculators[Y_AXIS].calculate();
-		thresholdValues[Z_AXIS] = thresholdCalculators[Z_AXIS].calculate();
-	}
-
 
 	public int[] countSteps(float[] accelerationSamples) {
 
 		calculateLinearAcceleration(accelerationSamples);
         smoothLinearAcceleration();
-		calculateThresholds();
+		return updateStepCounters();
 
-		//TODO temp
-		if (getThresholds()[2].getCurrentMaxValue() > 0.3F && lastStepCounters[2] > thresholdValues[2] && smoothedAccelerationVector[2] < thresholdValues[2]) {
-			stepCounters[2]++;
+	}
+
+	private int[] updateStepCounters() {
+		for(int i = 0; i < 3; i++) {
+			stepCnt[i] = stepCounters[i].update(smoothedAccelerationVector[i]);
 		}
-		lastStepCounters[2] = smoothedAccelerationVector[2];
-		return stepCounters;
+		return stepCnt;
 	}
 
 	//for testing
@@ -196,6 +231,10 @@ public class StepDetector {
 	}
 	
 	public float[] getThresholdValues() {
+		float[] thresholdValues = new float[3];
+		for(int i = 0; i < 3; i++) {
+			thresholdValues[i] = stepCounters[i].getThresholdValue();
+		}
 		return thresholdValues;
 	}
 }

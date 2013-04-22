@@ -32,10 +32,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private static final String TAG = "AccelerationEventListener";
     private static final char CSV_DELIM = ',';
-    private static final String CSV_HEADER =
-            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg,X Thld,Y Thld,Z Thld,Min Z,Max Z,step";
+    private static final String CSV_HEADER_ACCEL_FILE =
+            "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg";
+    private static final String CSV_HEADER_STEPS_FILE =
+            "Time,X-Avg,Y-Avg,Z-Avg,X-Thld,Y-Thld,Z-Thld,X-Min,X-Max,Y-Min,Y-Max,Z-Min,Z-Max,X-Step,Y-Step,Z-Step";
 
-    private PrintWriter printWriter;
+    private PrintWriter accelerometerDataWriter;
+    private PrintWriter stepsDataWriter;
 
 	private XYPlot accelerationPlot;
 	private SimpleXYSeries xAxisSeries;
@@ -95,6 +98,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] smoothedValues;
 	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
+	private float xStep;
+	private float yStep;
 	private float zStep;
 	private SimpleXYSeries dataPlotSeries4;
 	private StepDetector stepDetector;
@@ -114,6 +119,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 		oldStepCounts[1] = 0;
 		oldStepCounts[2] = 0;
 		
+		xStep = -0.5F;
+		yStep = -0.5F;
 		zStep = -0.5F;
 		
 		// set xy plot
@@ -169,14 +176,19 @@ public class MainActivity extends Activity implements SensorEventListener {
 		
 		// Data files are stored on the external cache directory so they can
         // be pulled off of the device by the user
-        File dataFile = new File(getExternalCacheDir(), "accelerometer.csv");
+        File accelerometerDataFile = new File(getExternalCacheDir(), "accelerometer.csv");
+        File stepsDataFile = new File(getExternalCacheDir(), "steps.csv");
         //Log.d(TAG, dataFile.getAbsolutePath());
 		try {
 			//FileWriter calls directly OS for every write request
 			//For better performance the FileWriter is wrapped into BufferedWriter, which calls out for a batch of bytes
 			//PrintWriter allows a human-readable writing into a file
-			printWriter = new PrintWriter(new BufferedWriter(new FileWriter(dataFile)));
-			printWriter.println(CSV_HEADER);
+			accelerometerDataWriter = new PrintWriter(new BufferedWriter(new FileWriter(accelerometerDataFile)));
+			accelerometerDataWriter.println(CSV_HEADER_ACCEL_FILE);
+
+			stepsDataWriter = new PrintWriter(new BufferedWriter(new FileWriter(stepsDataFile)));
+			stepsDataWriter.println(CSV_HEADER_STEPS_FILE);
+
 		} catch (IOException e) {
 			Log.e(TAG, "Could not open CSV file(s)", e);
 		}
@@ -221,7 +233,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sampleTime = event.timestamp;
         
 		int[] stepCounts = stepDetector.countSteps(values);
-		//TODO temp
+		
+		//TODO temp visualization of step counting
+		if (oldStepCounts[0] != stepCounts[0]) {
+			xStep *= -1;
+		}
+		if (oldStepCounts[1] != stepCounts[1]) {
+			yStep *= -1;
+		}
 		if (oldStepCounts[2] != stepCounts[2]) {
 			zStep *= -1;
 		}
@@ -239,6 +258,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 	}
 
 	private void updateTextViewCounters(int[] stepCounts) {
+		TextView xStepsCountView = (TextView) findViewById(R.id.xStepsCountTextView);
+		xStepsCountView.setText("" + stepCounts[0]);
+		TextView yStepsCountView = (TextView) findViewById(R.id.yStepsCountTextView);
+		yStepsCountView.setText("" + stepCounts[1]);
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
 		zStepsCountView.setText("" + stepCounts[2]);
 	}
@@ -275,26 +298,46 @@ public class MainActivity extends Activity implements SensorEventListener {
 	}
 
 	private void writeData() {
-		if (printWriter != null) {
+		long sampleTimeInMilis = (sampleTime / 1000000) - startTime;
+		if (accelerometerDataWriter != null) {
 			StringBuffer sb = new StringBuffer()
-				.append((sampleTime / 1000000) - startTime).append(CSV_DELIM)
+				.append(sampleTimeInMilis).append(CSV_DELIM)
 				.append(values[0]).append(CSV_DELIM) // x
 				.append(values[1]).append(CSV_DELIM) // y
 				.append(values[2]).append(CSV_DELIM) // z
+				.append(smoothedValues[0]).append(CSV_DELIM)
+				.append(smoothedValues[1]).append(CSV_DELIM)
+				.append(smoothedValues[2])
+				;
+
+			accelerometerDataWriter.println(sb.toString());
+			if (accelerometerDataWriter.checkError()) {
+				Log.w(TAG, "Error writing sensor event data");
+			}
+		}
+		if (stepsDataWriter != null) {
+			StringBuffer sb = new StringBuffer()
+				.append(sampleTimeInMilis).append(CSV_DELIM)
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
 				.append(smoothedValues[2]).append(CSV_DELIM)
 				.append(thresholdValues[0]).append(CSV_DELIM)
 				.append(thresholdValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getMaxValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getMaxValue()).append(CSV_DELIM)
 				.append(stepDetector.getThresholds()[2].getMinValue()).append(CSV_DELIM)
 				.append(stepDetector.getThresholds()[2].getMaxValue()).append(CSV_DELIM)
+				.append(xStep).append(CSV_DELIM)
+				.append(yStep).append(CSV_DELIM)
 				.append(zStep)
 				;
 
-			printWriter.println(sb.toString());
-			if (printWriter.checkError()) {
-				Log.w(TAG, "Error writing sensor event data");
+			stepsDataWriter.println(sb.toString());
+			if (stepsDataWriter.checkError()) {
+				Log.w(TAG, "Error writing steps data");
 			}
 		}
 	}
