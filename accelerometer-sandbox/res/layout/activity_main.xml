@@ -79,8 +79,8 @@
         android:layout_marginTop="12dp"
         android:ems="10"
         android:gravity="center"
-        android:textColor="#00F"
-        android:text="Z-Steps" />
+        android:text="Z-Steps"
+        android:textColor="#0FF" />
 
     <TextView
         android:id="@+id/zStepsCountTextView"
@@ -89,8 +89,8 @@
         android:layout_alignLeft="@+id/yStepsCountTextView"
         android:layout_alignTop="@+id/zStepsTextView"
         android:ems="10"
-        android:textColor="#00F"
         android:inputType="number"
-        android:text="0" />
+        android:text="0"
+        android:textColor="#0FF" />
     
 </RelativeLayout>

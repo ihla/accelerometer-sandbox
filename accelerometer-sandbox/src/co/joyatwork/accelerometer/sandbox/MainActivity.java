@@ -5,10 +5,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Currency;
 
-import co.joyatwork.filters.MovingAverage;
-
+import co.joyatwork.pedometer.StepDetector;
 import com.androidplot.xy.BoundaryMode;
 import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.LineAndPointRenderer;
@@ -57,108 +55,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private long lastChartRefresh;
     private long startTime;
 
-    private static final float ALPHA = 0.8f;
-    private float[] gravity = new float[3];
-    
-    private static final int MOVING_AVG_WINDOW_SIZE = 10;
-    private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
-    		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
-    		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
-    
-    private class Threshold {
-    	
-    	private final static String TAG = "Threshold";
-    	private final int windowSize;
-		private float measuredMinValue;
-		private float measuredMaxValue;
-		private float currentMinValue;
-		private float currentMaxValue;
-		private int sampleCount;
-		private float minValue;
-		private float maxValue;
-		private boolean isFirstSample;
-		private float firstSample;
-		private boolean isFirstWindow;
-		
-
-		public Threshold(int numberOfSamples) {
-    		this.windowSize = numberOfSamples;
-    		this.measuredMinValue = 0;
-    		this.measuredMaxValue = 0;
-    		this.currentMaxValue = 0;
-    		this.currentMinValue = 0;
-    		this.sampleCount = 0; 
-    		this.minValue = 0;
-    		this.maxValue = 0;
-    		this.isFirstSample = true;
-    		this.isFirstWindow = true;
-    	}
-		
-		public void pushSample(float newSample) {
-			
-			if (isFirstSample) {
-				isFirstSample = false;
-				firstSample = newSample;
-				measuredMinValue = measuredMaxValue = firstSample;
-				currentMaxValue = measuredMaxValue;
-				currentMinValue = measuredMinValue;
-				return;
-			}
-			if (newSample < measuredMinValue) {
-				measuredMinValue = newSample;
-				currentMinValue = measuredMinValue;
-			}
-			else if (newSample > measuredMaxValue) {
-				measuredMaxValue = newSample;
-				currentMaxValue = measuredMaxValue;
-			}
-			sampleCount++;
-			//Log.d(TAG, "current cnt: " + sampleCount + "min " + currentMinValue + "max " + currentMaxValue);
-			if (sampleCount == windowSize) {
-				sampleCount = 0;
-				if (isFirstWindow) {
-					isFirstWindow = false;
-					if ((firstSample == measuredMinValue) || (firstSample == measuredMaxValue)) {
-						measuredMinValue = measuredMaxValue = newSample;
-						currentMaxValue = measuredMaxValue;
-						currentMinValue = measuredMinValue;
-						return;
-					}
-				}
-				minValue = measuredMinValue;
-				maxValue = measuredMaxValue;
-				measuredMinValue = measuredMaxValue = newSample;
-				//Log.d(TAG, "min: " + minValue + "max: " + maxValue + "treshold: " + calculate());
-			}
-		}
-		
-		public float getCurrentMinValue() {
-			return currentMinValue;
-		}
-		
-		public float getCurrentMaxValue() {
-			return currentMaxValue;
-		}
-		
-		public float getMinValue(){
-			return minValue;
-		}
-		
-		public float getMaxValue() {
-			return maxValue;
-		}
-		
-		public float calculate() {
-			return (minValue + maxValue)/2;
-		}
-    }
-    
-    private static final int THRESHOLD_WINDOW_SIZE = 50;
-    private Threshold[] thresholds = { new Threshold(THRESHOLD_WINDOW_SIZE), 
-    		new Threshold(THRESHOLD_WINDOW_SIZE),
-    		new Threshold(THRESHOLD_WINDOW_SIZE)
-    };
-    
+    //TDOD remove
     private class CosAlpha {
     	private float lastVectorX = 0;
     	private float lastVectorY = 0;
@@ -198,10 +95,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] smoothedValues;
 	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
-	private float[] oldValues;
 	private float zStep;
 	private SimpleXYSeries dataPlotSeries4;
-	private int zStepsCount;
+	private StepDetector stepDetector;
+	private int[] oldStepCounts;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -211,12 +108,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		
-		oldValues = new float[3];
-		oldValues[0] = 0;
-		oldValues[1] = 0;
-		oldValues[2] = 0;
+		stepDetector = new StepDetector();
+		oldStepCounts = new int[3];
+		oldStepCounts[0] = 0;
+		oldStepCounts[1] = 0;
+		oldStepCounts[2] = 0;
+		
 		zStep = -0.5F;
-		zStepsCount = 0;
 		
 		// set xy plot
 		accelerationPlot = (XYPlot) findViewById(R.id.accelerationPlot);
@@ -322,66 +220,27 @@ public class MainActivity extends Activity implements SensorEventListener {
 		values = event.values.clone(); //TODO cloning might cause bad performance!!!
 		sampleTime = event.timestamp;
         
-		values = highPass(values);
-        smoothedValues = smoothValues(values);
-		thresholdValues = calculateThreshold(smoothedValues);
-		int[] stepCounts = countSteps();
+		int[] stepCounts = stepDetector.countSteps(values);
+		//TODO temp
+		if (oldStepCounts[2] != stepCounts[2]) {
+			zStep *= -1;
+		}
+		oldStepCounts[0] = stepCounts[0];
+		oldStepCounts[1] = stepCounts[1];
+		oldStepCounts[2] = stepCounts[2];
 		
+		values = stepDetector.getLinearAccelerationValues();
+		smoothedValues = stepDetector.getSmoothedAccelerationValues();
+		thresholdValues = stepDetector.getThresholdValues();
  
-		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
-		zStepsCountView.setText("" + stepCounts[2]);
-
+		updateTextViewCounters(stepCounts);
 		writeData();
  	    plotData();
 	}
 
-	private int[] countSteps() {
-		int[] returnValues = new int[3];
-		if (thresholds[2].getCurrentMaxValue() > 0.3F && oldValues[2] > thresholdValues[2] && smoothedValues[2] < thresholdValues[2]) {
-			zStep *= -1;
-			zStepsCount++;
-		}
-		oldValues[2] = smoothedValues[2];
-		returnValues[2] = zStepsCount;
-		return returnValues;
-	}
-
-	private float[] calculateThreshold(float[] values) {
-		thresholds[0].pushSample(values[0]);
-		thresholds[1].pushSample(values[1]);
-		thresholds[2].pushSample(values[2]);
-		
-		float[] returnValues = new float[3];
-		returnValues[0] = thresholds[0].calculate();
-		returnValues[1] = thresholds[1].calculate();
-		returnValues[2] = thresholds[2].calculate();
-		return returnValues;
-	}
-
-	private float[] smoothValues(float[] values) {
-		movingAvgCalculators[0].pushValue(values[0]);
-		movingAvgCalculators[1].pushValue(values[1]);
-		movingAvgCalculators[2].pushValue(values[2]);
-		
-		float[] retVal = new float[3];
-		retVal[0] = movingAvgCalculators[0].getValue();
-		retVal[1] = movingAvgCalculators[1].getValue();
-		retVal[2] = movingAvgCalculators[2].getValue();
-		return retVal;
-	}
-
-	private float[] highPass(float[] values) {
-		float[] filteredValues = new float[3];
-
-		gravity[0] = ALPHA * gravity[0] + (1 - ALPHA) * values[0];
-		gravity[1] = ALPHA * gravity[1] + (1 - ALPHA) * values[1];
-		gravity[2] = ALPHA * gravity[2] + (1 - ALPHA) * values[2];
-
-		filteredValues[0] = values[0] - gravity[0];
-		filteredValues[1] = values[1] - gravity[1];
-		filteredValues[2] = values[2] - gravity[2];
-
-		return filteredValues;
+	private void updateTextViewCounters(int[] stepCounts) {
+		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
+		zStepsCountView.setText("" + stepCounts[2]);
 	}
 
 	private void plotData() {
@@ -428,8 +287,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(thresholdValues[0]).append(CSV_DELIM)
 				.append(thresholdValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
-				.append(thresholds[2].getMinValue()).append(CSV_DELIM)
-				.append(thresholds[2].getMaxValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getMaxValue()).append(CSV_DELIM)
 				.append(zStep)
 				;
 
