@@ -231,8 +231,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 		
 		values = event.values.clone(); //TODO cloning might cause bad performance!!!
 		sampleTime = event.timestamp;
+		long sampleTimeInMilis = sampleTime / 1000000;
         
-		int[] stepCounts = stepDetector.countSteps(values);
+		int[] stepCounts = stepDetector.countSteps(values, sampleTimeInMilis);
 		
 		//TODO temp visualization of step counting
 		if (oldStepCounts[0] != stepCounts[0]) {
@@ -298,10 +299,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 	}
 
 	private void writeData() {
-		long sampleTimeInMilis = (sampleTime / 1000000) - startTime;
+		long timeStampInMilis = (sampleTime / 1000000) - startTime;
 		if (accelerometerDataWriter != null) {
 			StringBuffer sb = new StringBuffer()
-				.append(sampleTimeInMilis).append(CSV_DELIM)
+				.append(timeStampInMilis).append(CSV_DELIM)
 				.append(values[0]).append(CSV_DELIM) // x
 				.append(values[1]).append(CSV_DELIM) // y
 				.append(values[2]).append(CSV_DELIM) // z
@@ -317,7 +318,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 		}
 		if (stepsDataWriter != null) {
 			StringBuffer sb = new StringBuffer()
-				.append(sampleTimeInMilis).append(CSV_DELIM)
+				.append(timeStampInMilis).append(CSV_DELIM)
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
 				.append(smoothedValues[2]).append(CSV_DELIM)

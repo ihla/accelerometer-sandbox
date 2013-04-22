@@ -98,12 +98,15 @@ public class StepDetector {
 		private int stepCount;
 		private float lastSample;
 		private float thresholdValue;
+		private boolean firstStep;
+		private long previousStepTime;
 		
 		public StepCounter(Threshold t) {
 			threshold = t;
 			stepCount = 0; 
 			lastSample = 0;
 			thresholdValue = 0;
+			firstStep = true;
 		}
 	
 	    /**
@@ -114,16 +117,37 @@ public class StepDetector {
 			thresholdValue = threshold.calculate();
 		}
 
-		public int update(float newSample) {
+		public int update(float newSample, long sampleTimeInMilis) {
 			calculateThresholdValue(newSample);
 			//TODO threshold.getCurrentMaxValue() > 0.3F - how to ignore low values?
 			if (threshold.getCurrentMaxValue() > 0.3F && lastSample > thresholdValue && newSample < thresholdValue) {
-				stepCount++;
+				if (isValidStepInterval(sampleTimeInMilis)) {
+					stepCount++;
+				}
 			}
 			lastSample = newSample;
 			return stepCount;
 		}
 		
+		private boolean isValidStepInterval(long stepTimeInMilis) {
+			return true; //TODO temp
+			/*
+			if (firstStep) {
+				previousStepTime = stepTimeInMilis;
+				firstStep = false;
+				return true;
+			}
+			else {
+				long stepInterval = stepTimeInMilis - previousStepTime;
+				previousStepTime = stepTimeInMilis;
+				if (stepInterval >= 200 && stepInterval <= 2000) { //<200ms, 2000ms>
+					return true;
+				}
+			}
+			return false;
+			*/
+		}
+
 		public float getThresholdValue() {
 			return thresholdValue;
 		}
@@ -206,17 +230,17 @@ public class StepDetector {
     }
     
 
-	public int[] countSteps(float[] accelerationSamples) {
+	public int[] countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
 
 		calculateLinearAcceleration(accelerationSamples);
         smoothLinearAcceleration();
-		return updateStepCounters();
+		return updateStepCounters(sampleTimeInMilis);
 
 	}
 
-	private int[] updateStepCounters() {
+	private int[] updateStepCounters(long sampleTimeInMilis) {
 		for(int i = 0; i < 3; i++) {
-			stepCnt[i] = stepCounters[i].update(smoothedAccelerationVector[i]);
+			stepCnt[i] = stepCounters[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
 		}
 		return stepCnt;
 	}
