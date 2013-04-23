@@ -272,6 +272,23 @@ public class MainActivity extends Activity implements SensorEventListener {
 		yStepsCountView.setText("" + stepCounts[1]);
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
 		zStepsCountView.setText("" + stepCounts[2]);
+		
+		float xPeak2Peak = stepDetector.getThresholds()[0].getFixedPeak2PeakValue();
+		float yPeak2Peak = stepDetector.getThresholds()[1].getFixedPeak2PeakValue();
+		float zPeak2Peak = stepDetector.getThresholds()[2].getFixedPeak2PeakValue();
+		float maxPeak2Peak = Math.max(Math.max(xPeak2Peak, yPeak2Peak), zPeak2Peak);
+		
+		TextView maxP2PAxisView = (TextView) findViewById(R.id.maxP2PAxisTextView);
+		
+		if (maxPeak2Peak == xPeak2Peak) {
+			maxP2PAxisView.setText("X");
+		}
+		else if (maxPeak2Peak == yPeak2Peak) {
+			maxP2PAxisView.setText("Y");
+		}
+		else {
+			maxP2PAxisView.setText("Z");
+		}
 	}
 
 	private void plotData() {

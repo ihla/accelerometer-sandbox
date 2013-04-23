@@ -92,5 +92,25 @@
         android:inputType="number"
         android:text="0"
         android:textColor="#0FF" />
+
+    <TextView
+        android:id="@+id/maxP2PTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/zStepsTextView"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:gravity="center"
+        android:text="Max Peak2Peak Axis" />
+
+    <TextView
+        android:id="@+id/maxP2PAxisTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/maxP2PTextView"
+        android:layout_alignBottom="@+id/maxP2PTextView"
+        android:layout_alignLeft="@+id/zStepsCountTextView"
+        android:ems="10" />
     
 </RelativeLayout>
