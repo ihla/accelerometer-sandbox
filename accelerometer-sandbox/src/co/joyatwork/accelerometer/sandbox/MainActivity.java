@@ -36,9 +36,12 @@ public class MainActivity extends Activity implements SensorEventListener {
             "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg";
     private static final String CSV_HEADER_STEPS_FILE =
             "Time,X-Avg,Y-Avg,Z-Avg,X-Thld,Y-Thld,Z-Thld,X-Min,X-Max,Y-Min,Y-Max,Z-Min,Z-Max,X-Step,Y-Step,Z-Step";
+    private static final String CSV_HEADER_P2P_FILE =
+            "Time,X-Avg,Y-Avg,Z-Avg,X-CurrP,X-P,Y-CurrP,Y-P,Z-CurrP,Z-P";
 
     private PrintWriter accelerometerDataWriter;
     private PrintWriter stepsDataWriter;
+    private PrintWriter peak2peakDataWriter;
 
 	private XYPlot accelerationPlot;
 	private SimpleXYSeries xAxisSeries;
@@ -178,6 +181,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         // be pulled off of the device by the user
         File accelerometerDataFile = new File(getExternalCacheDir(), "accelerometer.csv");
         File stepsDataFile = new File(getExternalCacheDir(), "steps.csv");
+        File peak2peakDataFile = new File(getExternalCacheDir(), "peaks.csv");
         //Log.d(TAG, dataFile.getAbsolutePath());
 		try {
 			//FileWriter calls directly OS for every write request
@@ -188,6 +192,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 			stepsDataWriter = new PrintWriter(new BufferedWriter(new FileWriter(stepsDataFile)));
 			stepsDataWriter.println(CSV_HEADER_STEPS_FILE);
+			
+			peak2peakDataWriter = new PrintWriter(new BufferedWriter(new FileWriter(peak2peakDataFile)));
+			peak2peakDataWriter.println(CSV_HEADER_P2P_FILE);
 
 		} catch (IOException e) {
 			Log.e(TAG, "Could not open CSV file(s)", e);
@@ -325,12 +332,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(thresholdValues[0]).append(CSV_DELIM)
 				.append(thresholdValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getMaxValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getMaxValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getMaxValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getFixedMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getFixedMaxValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getFixedMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getFixedMaxValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getFixedMinValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getFixedMaxValue()).append(CSV_DELIM)
 				.append(xStep).append(CSV_DELIM)
 				.append(yStep).append(CSV_DELIM)
 				.append(zStep)
@@ -339,6 +346,25 @@ public class MainActivity extends Activity implements SensorEventListener {
 			stepsDataWriter.println(sb.toString());
 			if (stepsDataWriter.checkError()) {
 				Log.w(TAG, "Error writing steps data");
+			}
+		}
+		if (peak2peakDataWriter != null) {
+			StringBuffer sb = new StringBuffer()
+				.append(timeStampInMilis).append(CSV_DELIM)
+				.append(smoothedValues[0]).append(CSV_DELIM)
+				.append(smoothedValues[1]).append(CSV_DELIM)
+				.append(smoothedValues[2]).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getCurrentPeak2PeakValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[0].getFixedPeak2PeakValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getCurrentPeak2PeakValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[1].getFixedPeak2PeakValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getCurrentPeak2PeakValue()).append(CSV_DELIM)
+				.append(stepDetector.getThresholds()[2].getFixedPeak2PeakValue())
+				;
+
+			peak2peakDataWriter.println(sb.toString());
+			if (stepsDataWriter.checkError()) {
+				Log.w(TAG, "Error writing peak data");
 			}
 		}
 	}
