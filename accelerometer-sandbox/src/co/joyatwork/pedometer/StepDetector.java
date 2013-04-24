@@ -165,12 +165,9 @@ public class StepDetector {
 	
 		public int update(float newSample, long sampleTimeInMilis) {
 			calculateThreshold(newSample);
-			//TODO threshold.getCurrentMaxValue() > 0.3F - how to ignore low values?
-			if (threshold.getCurrentMaxValue() > 0.3F 
-			    && lastSample > thresholdValue 
-			    && newSample < thresholdValue) {
-				//start to measure new current min/max values when threshold is crossed
-				threshold.setCurrentMinMax(thresholdValue);
+			
+			if (hasValidPeak() && isCrossingBelowThreshold(newSample)) {
+				restartPeakMeasurement();
 				//TODO ???
 				if (isValidStepInterval(sampleTimeInMilis)) {
 					stepCount++;
@@ -178,6 +175,27 @@ public class StepDetector {
 			}
 			lastSample = newSample;
 			return stepCount;
+		}
+
+		private void restartPeakMeasurement() {
+			threshold.setCurrentMinMax(thresholdValue);
+		}
+
+		private boolean isCrossingBelowThreshold(float newSample) {
+			return (lastSample > thresholdValue) && (newSample < thresholdValue);
+		}
+
+		private boolean hasValidPeak() {
+			//TODO threshold.getCurrentMaxValue() > 0.3F - how to ignore low values?
+			return threshold.getCurrentMaxValue() > 0.3F;
+		}
+		
+		public void update_(float sample, long sampleTimeInMilis) {
+			calculateThreshold(sample);
+			if (hasValidPeak() && isCrossingBelowThreshold(sample)) {
+				restartPeakMeasurement();
+				//TODO
+			}
 		}
 
 	    /**

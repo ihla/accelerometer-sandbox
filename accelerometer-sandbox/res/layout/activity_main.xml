@@ -111,6 +111,7 @@
         android:layout_alignBaseline="@+id/maxP2PTextView"
         android:layout_alignBottom="@+id/maxP2PTextView"
         android:layout_alignLeft="@+id/zStepsCountTextView"
-        android:ems="10" />
+        android:ems="10"
+        android:text="?" />
     
 </RelativeLayout>
