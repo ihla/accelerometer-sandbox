@@ -8,10 +8,23 @@ class StepDetector {
 	
 	class SearchingDetector implements StepDetectingStrategy {
 
+		private static final int VALID_STEPS_COUNT = 4;
 		private StepDetector detector;
+		private int validStepsCount = 0;
 
 		@Override
 		public void update(float sampleValue, long sampleTimeInMilis) {
+			
+			if (detector.isValidStepInterval(sampleTimeInMilis)) {
+				validStepsCount++;
+				if (validStepsCount >= VALID_STEPS_COUNT) {
+					detector.setHasValidSteps(true);
+				}
+			}
+			else {
+				validStepsCount = 0;
+				detector.setHasValidSteps(false);
+			}
 		
 		}
 		
@@ -47,6 +60,7 @@ class StepDetector {
 	private float thresholdValue;
 	private boolean firstStep;
 	private long previousStepTime;
+	private boolean hasValidSteps = false;
 	
 	public StepDetector(Threshold t) {
 		threshold = t;
@@ -64,18 +78,17 @@ class StepDetector {
 		this(new Threshold(THRESHOLD_WINDOW_SIZE));
 	}
 
-	public int update(float newSample, long sampleTimeInMilis) {
+	public void update(float newSample, long sampleTimeInMilis) {
 		calculateThreshold(newSample);
 		
 		if (hasValidPeak() && isCrossingBelowThreshold(newSample)) {
 			restartPeakMeasurement();
 			//TODO ???
-			if (isValidStepInterval(sampleTimeInMilis)) {
-				stepCount++;
-			}
+			stepCount++;
+			//detectingStrategy sets back the hasValidSteps flag!
+			detectingStrategy.update(newSample, sampleTimeInMilis);
 		}
 		lastSample = newSample;
-		return stepCount;
 	}
 
 	private void restartPeakMeasurement() {
@@ -90,14 +103,6 @@ class StepDetector {
 		//TODO how to ignore low values?
 		return threshold.getCurrentMaxValue() > 0.3F;
 	}
-	
-	public void update_(float sample, long sampleTimeInMilis) {
-		calculateThreshold(sample);
-		if (hasValidPeak() && isCrossingBelowThreshold(sample)) {
-			restartPeakMeasurement();
-			//TODO
-		}
-	}
 
     /**
      * Calculates thresholds for step detections
@@ -108,12 +113,10 @@ class StepDetector {
 	}
 
 	private boolean isValidStepInterval(long stepTimeInMilis) {
-		return true; //TODO temp
-		/*
 		if (firstStep) {
 			previousStepTime = stepTimeInMilis;
 			firstStep = false;
-			return true;
+			return true; //consider the 1st step is valid
 		}
 		else {
 			long stepInterval = stepTimeInMilis - previousStepTime;
@@ -123,17 +126,24 @@ class StepDetector {
 			}
 		}
 		return false;
-		*/
 	}
 
+	private void setHasValidSteps(boolean value) {
+		hasValidSteps = value;
+	}
+
+	public boolean hasValidSteps() {
+		return hasValidSteps;
+	}
+
+	public int getStepCount() {
+		return stepCount;
+	}
+	
 	public float getThresholdValue() {
 		return thresholdValue;
 	}
 	
-	public int getValue() {
-		return stepCount;
-	}
-
 	public float getFixedPeak2PeakValue() {
 		return threshold.getFixedPeak2PeakValue();
 	}

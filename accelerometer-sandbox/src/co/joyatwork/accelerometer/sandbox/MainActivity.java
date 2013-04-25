@@ -273,6 +273,25 @@ public class MainActivity extends Activity implements SensorEventListener {
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
 		zStepsCountView.setText("" + stepCounts[2]);
 		
+		if (stepCounter.hasValidSteps(0)) {
+			xStepsCountView.setTextColor(Color.RED);
+		}
+		else {
+			xStepsCountView.setTextColor(Color.WHITE);
+		}
+		if (stepCounter.hasValidSteps(1)) {
+			yStepsCountView.setTextColor(Color.GREEN);
+		}
+		else {
+			yStepsCountView.setTextColor(Color.WHITE);
+		}
+		if (stepCounter.hasValidSteps(2)) {
+			zStepsCountView.setTextColor(Color.CYAN);
+		}
+		else {
+			zStepsCountView.setTextColor(Color.WHITE);
+		}
+		
 		float xPeak2Peak = stepCounter.getFixedPeak2PeakValue(0);
 		float yPeak2Peak = stepCounter.getFixedPeak2PeakValue(1);
 		float zPeak2Peak = stepCounter.getFixedPeak2PeakValue(2);

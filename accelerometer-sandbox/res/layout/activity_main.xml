@@ -43,9 +43,9 @@
         android:layout_toRightOf="@+id/xStepsTextView"
         android:ems="10"
         android:hint="0"
-        android:textColor="#F00"
         android:inputType="number"
-        android:text="0" />
+        android:text="0"
+        android:textColor="#FFF" />
 
     <TextView
         android:id="@+id/yStepsTextView"
@@ -66,9 +66,9 @@
         android:layout_alignLeft="@+id/xStepsCountTextView"
         android:layout_alignTop="@+id/yStepsTextView"
         android:ems="10"
-        android:textColor="#0F0"
         android:inputType="number"
-        android:text="0" />
+        android:text="0"
+        android:textColor="#FFF" />
 
     <TextView
         android:id="@+id/zStepsTextView"
@@ -91,7 +91,7 @@
         android:ems="10"
         android:inputType="number"
         android:text="0"
-        android:textColor="#0FF" />
+        android:textColor="#FFF" />
 
     <TextView
         android:id="@+id/maxP2PTextView"

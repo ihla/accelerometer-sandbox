@@ -69,7 +69,8 @@ public class StepCounter {
 	
 	private int[] updateStepCounters(long sampleTimeInMilis) {
 		for(int i = 0; i < 3; i++) {
-			stepCnt[i] = stepDetectors[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
+			stepDetectors[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
+			stepCnt[i] = stepDetectors[i].getStepCount();
 		}
 		return stepCnt;
 	}
@@ -107,4 +108,7 @@ public class StepCounter {
 		return stepDetectors[axis].getFixedMaxValue();
 	}
 
+	public boolean hasValidSteps(int axis) {
+		return stepDetectors[axis].hasValidSteps();
+	}
 }
