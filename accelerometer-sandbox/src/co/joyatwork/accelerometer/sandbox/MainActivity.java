@@ -105,7 +105,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float yStep;
 	private float zStep;
 	private SimpleXYSeries dataPlotSeries4;
-	private StepCounter stepDetector;
+	private StepCounter stepCounter;
 	private int[] oldStepCounts;
     
 	@Override
@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		
-		stepDetector = new StepCounter();
+		stepCounter = new StepCounter();
 		oldStepCounts = new int[3];
 		oldStepCounts[0] = 0;
 		oldStepCounts[1] = 0;
@@ -240,7 +240,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sampleTime = event.timestamp;
 		long sampleTimeInMilis = sampleTime / 1000000;
         
-		int[] stepCounts = stepDetector.countSteps(values, sampleTimeInMilis);
+		int[] stepCounts = stepCounter.countSteps(values, sampleTimeInMilis);
 		
 		//TODO temp visualization of step counting
 		if (oldStepCounts[0] != stepCounts[0]) {
@@ -256,9 +256,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 		oldStepCounts[1] = stepCounts[1];
 		oldStepCounts[2] = stepCounts[2];
 		
-		values = stepDetector.getLinearAccelerationValues();
-		smoothedValues = stepDetector.getSmoothedAccelerationValues();
-		thresholdValues = stepDetector.getThresholdValues();
+		values = stepCounter.getLinearAccelerationValues();
+		smoothedValues = stepCounter.getSmoothedAccelerationValues();
+		thresholdValues = stepCounter.getThresholdValues();
  
 		updateTextViewCounters(stepCounts);
 		writeData();
@@ -273,9 +273,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
 		zStepsCountView.setText("" + stepCounts[2]);
 		
-		float xPeak2Peak = stepDetector.getThresholds()[0].getFixedPeak2PeakValue();
-		float yPeak2Peak = stepDetector.getThresholds()[1].getFixedPeak2PeakValue();
-		float zPeak2Peak = stepDetector.getThresholds()[2].getFixedPeak2PeakValue();
+		float xPeak2Peak = stepCounter.getFixedPeak2PeakValue(0);
+		float yPeak2Peak = stepCounter.getFixedPeak2PeakValue(1);
+		float zPeak2Peak = stepCounter.getFixedPeak2PeakValue(2);
 		float maxPeak2Peak = Math.max(Math.max(xPeak2Peak, yPeak2Peak), zPeak2Peak);
 		
 		TextView maxP2PAxisView = (TextView) findViewById(R.id.maxP2PAxisTextView);
@@ -349,12 +349,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(thresholdValues[0]).append(CSV_DELIM)
 				.append(thresholdValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getFixedMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getFixedMaxValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getFixedMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getFixedMaxValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getFixedMinValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getFixedMaxValue()).append(CSV_DELIM)
+				.append(stepCounter.getFixedMinValue(0)).append(CSV_DELIM)
+				.append(stepCounter.getFixedMaxValue(0)).append(CSV_DELIM)
+				.append(stepCounter.getFixedMinValue(1)).append(CSV_DELIM)
+				.append(stepCounter.getFixedMaxValue(1)).append(CSV_DELIM)
+				.append(stepCounter.getFixedMinValue(2)).append(CSV_DELIM)
+				.append(stepCounter.getFixedMaxValue(2)).append(CSV_DELIM)
 				.append(xStep).append(CSV_DELIM)
 				.append(yStep).append(CSV_DELIM)
 				.append(zStep)
@@ -371,12 +371,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
 				.append(smoothedValues[2]).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getCurrentPeak2PeakValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[0].getFixedPeak2PeakValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getCurrentPeak2PeakValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[1].getFixedPeak2PeakValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getCurrentPeak2PeakValue()).append(CSV_DELIM)
-				.append(stepDetector.getThresholds()[2].getFixedPeak2PeakValue())
+				.append(stepCounter.getCurrentPeak2PeakValue(0)).append(CSV_DELIM)
+				.append(stepCounter.getFixedPeak2PeakValue(0)).append(CSV_DELIM)
+				.append(stepCounter.getCurrentPeak2PeakValue(1)).append(CSV_DELIM)
+				.append(stepCounter.getFixedPeak2PeakValue(1)).append(CSV_DELIM)
+				.append(stepCounter.getCurrentPeak2PeakValue(2)).append(CSV_DELIM)
+				.append(stepCounter.getFixedPeak2PeakValue(2))
 				;
 
 			peak2peakDataWriter.println(sb.toString());

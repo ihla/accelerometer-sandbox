@@ -8,21 +8,16 @@ public class StepCounter {
 	public static final int Y_AXIS = 1;
 	public static final int Z_AXIS = 2;
 
+	//TODO better to move to StepDetector
     private static final int MOVING_AVG_WINDOW_SIZE = 10;
     private MovingAverage[] movingAvgCalculators = { new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE),
     		new MovingAverage(MOVING_AVG_WINDOW_SIZE) };
 	private float[] smoothedAccelerationVector = new float[3];
 
-    private static final int THRESHOLD_WINDOW_SIZE = 50;
-    private Threshold[] thresholdCalculator = { new Threshold(THRESHOLD_WINDOW_SIZE), 
-    		new Threshold(THRESHOLD_WINDOW_SIZE),
-    		new Threshold(THRESHOLD_WINDOW_SIZE)
-    };
-	
-	private StepDetector[] stepCounters = { new StepDetector(thresholdCalculator[X_AXIS]),
-			new StepDetector(thresholdCalculator[Y_AXIS]),
-			new StepDetector(thresholdCalculator[Z_AXIS])
+	private StepDetector[] stepDetectors = { new StepDetector(),
+			new StepDetector(),
+			new StepDetector()
 	};
 
     private static final float ALPHA = 0.8f;
@@ -32,61 +27,49 @@ public class StepCounter {
 	private int[] stepCnt = new int[3];
 	
 	public StepCounter() {
-		lastStepCounters[X_AXIS] = 0;
-		lastStepCounters[Y_AXIS] = 0;
-		lastStepCounters[Z_AXIS] = 0;
-		
-		stepCnt[X_AXIS] = 0;
-		stepCnt[Y_AXIS] = 0;
-		stepCnt[Z_AXIS] = 0;
+		for (int i = 0; i < 3; i++) {
+			lastStepCounters[i] = 0;
+			stepCnt[i] = 0;
+		}
 	}
 	
+	public int[] countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
+
+		//TODO this should be moved to StepDetector >>
+		calculateLinearAcceleration(accelerationSamples);
+        smoothLinearAcceleration();
+        //<<
+		return updateStepCounters(sampleTimeInMilis);
+
+	}
+
 	/**
 	 * Calculates gravity-less values from acceleration samples by simple inverted Low Pass.
 	 * @param accelearationVector - acc. sensor samples 
 	 */
 	private void calculateLinearAcceleration(float[] accelearationVector) {
-		//Low Pass
-		gravity[X_AXIS] = ALPHA * gravity[X_AXIS] + (1 - ALPHA) * accelearationVector[X_AXIS];
-		gravity[Y_AXIS] = ALPHA * gravity[Y_AXIS] + (1 - ALPHA) * accelearationVector[Y_AXIS];
-		gravity[Z_AXIS] = ALPHA * gravity[Z_AXIS] + (1 - ALPHA) * accelearationVector[Z_AXIS];
-		//High Pass = Inverted Low Pass
-		linearAccelerationVector[X_AXIS] = accelearationVector[X_AXIS] - gravity[X_AXIS];
-		linearAccelerationVector[Y_AXIS] = accelearationVector[Y_AXIS] - gravity[Y_AXIS];
-		linearAccelerationVector[Z_AXIS] = accelearationVector[Z_AXIS] - gravity[Z_AXIS];
+		for (int i = 0; i < 3; i++) {
+			//Low Pass
+			gravity[i] = ALPHA * gravity[i] + (1 - ALPHA) * accelearationVector[i];
+			//High Pass = Inverted Low Pass
+			linearAccelerationVector[i] = accelearationVector[i] - gravity[i];
+		}
 	}
 
 	/**
 	 * Smoothes values by Moving Average Filter
 	 */
 	private void smoothLinearAcceleration() {
-		movingAvgCalculators[X_AXIS].pushValue(linearAccelerationVector[X_AXIS]);
-		movingAvgCalculators[Y_AXIS].pushValue(linearAccelerationVector[Y_AXIS]);
-		movingAvgCalculators[Z_AXIS].pushValue(linearAccelerationVector[Z_AXIS]);
-		
-		smoothedAccelerationVector[X_AXIS] = movingAvgCalculators[X_AXIS].getValue();
-		smoothedAccelerationVector[Y_AXIS] = movingAvgCalculators[Y_AXIS].getValue();
-		smoothedAccelerationVector[Z_AXIS] = movingAvgCalculators[Z_AXIS].getValue();
+		for (int i = 0; i < 3; i++) {
+			movingAvgCalculators[i].pushValue(linearAccelerationVector[i]);
+			smoothedAccelerationVector[i] = movingAvgCalculators[i].getValue();
+		}
 	}
 
 	
-    //TODO remove
-    public Threshold[] getThresholds() {
-    	return thresholdCalculator;
-    }
-    
-
-	public int[] countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
-
-		calculateLinearAcceleration(accelerationSamples);
-        smoothLinearAcceleration();
-		return updateStepCounters(sampleTimeInMilis);
-
-	}
-
 	private int[] updateStepCounters(long sampleTimeInMilis) {
 		for(int i = 0; i < 3; i++) {
-			stepCnt[i] = stepCounters[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
+			stepCnt[i] = stepDetectors[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
 		}
 		return stepCnt;
 	}
@@ -103,8 +86,25 @@ public class StepCounter {
 	public float[] getThresholdValues() {
 		float[] thresholdValues = new float[3];
 		for(int i = 0; i < 3; i++) {
-			thresholdValues[i] = stepCounters[i].getThresholdValue();
+			thresholdValues[i] = stepDetectors[i].getThresholdValue();
 		}
 		return thresholdValues;
 	}
+    
+	public float getFixedPeak2PeakValue(int axis) {
+		return stepDetectors[axis].getFixedPeak2PeakValue();
+	}
+	
+	public float getCurrentPeak2PeakValue(int axis) {
+		return stepDetectors[axis].getCurrentPeak2PeakValue();
+	}
+
+	public float getFixedMinValue(int axis) {
+		return stepDetectors[axis].getFixedMinValue();
+	}
+
+	public float getFixedMaxValue(int axis) {
+		return stepDetectors[axis].getFixedMaxValue();
+	}
+
 }
