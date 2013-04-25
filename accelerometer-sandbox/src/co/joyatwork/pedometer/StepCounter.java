@@ -111,4 +111,8 @@ public class StepCounter {
 	public boolean hasValidSteps(int axis) {
 		return stepDetectors[axis].hasValidSteps();
 	}
+	
+	public long getStepInterval(int axis) {
+		return stepDetectors[axis].getStepInterval();
+	}
 }

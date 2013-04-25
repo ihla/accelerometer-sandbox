@@ -8,7 +8,7 @@ class StepDetector {
 	
 	class SearchingDetector implements StepDetectingStrategy {
 
-		private static final int VALID_STEPS_COUNT = 4;
+		private static final int VALID_STEPS_COUNT = 3;
 		private StepDetector detector;
 		private int validStepsCount = 0;
 
@@ -61,12 +61,14 @@ class StepDetector {
 	private boolean firstStep;
 	private long previousStepTime;
 	private boolean hasValidSteps = false;
+	private long stepInterval;
 	
 	public StepDetector(Threshold t) {
 		threshold = t;
 		stepCount = 0; 
 		lastSample = 0;
 		thresholdValue = 0;
+		stepInterval = 0;
 		firstStep = true;
 		
 		searchingDetector = new SearchingDetector(this);
@@ -119,7 +121,7 @@ class StepDetector {
 			return true; //consider the 1st step is valid
 		}
 		else {
-			long stepInterval = stepTimeInMilis - previousStepTime;
+			stepInterval = stepTimeInMilis - previousStepTime;
 			previousStepTime = stepTimeInMilis;
 			if (stepInterval >= 200 && stepInterval <= 2000) { //<200ms, 2000ms>
 				return true;
@@ -138,6 +140,10 @@ class StepDetector {
 
 	public int getStepCount() {
 		return stepCount;
+	}
+
+	public long getStepInterval() {
+		return stepInterval;
 	}
 	
 	public float getThresholdValue() {
