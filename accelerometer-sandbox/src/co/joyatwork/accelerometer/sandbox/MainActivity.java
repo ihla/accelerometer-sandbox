@@ -6,7 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import co.joyatwork.pedometer.StepDetector;
+import co.joyatwork.pedometer.StepCounter;
 import com.androidplot.xy.BoundaryMode;
 import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.LineAndPointRenderer;
@@ -105,7 +105,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float yStep;
 	private float zStep;
 	private SimpleXYSeries dataPlotSeries4;
-	private StepDetector stepDetector;
+	private StepCounter stepDetector;
 	private int[] oldStepCounts;
     
 	@Override
@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		
-		stepDetector = new StepDetector();
+		stepDetector = new StepCounter();
 		oldStepCounts = new int[3];
 		oldStepCounts[0] = 0;
 		oldStepCounts[1] = 0;
