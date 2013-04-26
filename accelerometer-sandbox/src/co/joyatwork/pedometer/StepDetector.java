@@ -7,29 +7,28 @@ class StepDetector {
 	}
 	
 	class SearchingDetector implements StepDetectingStrategy {
-
-		private static final int VALID_STEPS_COUNT = 3;
+		/**
+		 * Step count is valid if intervals between 4 consecutive steps
+		 * are all in the range.
+		 */
+		private static final int VALID_STEPS_COUNT = 4;
 		private StepDetector detector;
 		private int validStepsCount = 0;
 
 		@Override
 		public void update(float sampleValue, long sampleTimeInMilis) {
 			
-			if (detector.isValidStepInterval(sampleTimeInMilis)) {
+			if (isValidStepInterval(sampleTimeInMilis)) {
 				validStepsCount++;
 				if (validStepsCount >= VALID_STEPS_COUNT) {
-					detector.setHasValidSteps(true);
+					setHasValidSteps(true);
 				}
 			}
 			else {
 				validStepsCount = 0;
-				detector.setHasValidSteps(false);
+				setHasValidSteps(false);
 			}
 		
-		}
-		
-		public SearchingDetector(StepDetector detector) {
-			this.detector = detector;
 		}
 	
 	}
@@ -43,12 +42,10 @@ class StepDetector {
 			
 		}
 		
-		public CountingDetector(StepDetector detector) {
-			this.detector = detector;
-		}
-		
 	}
-	
+
+	private static final int MIN_STEP_INTERVAL = 200;  //ms, people can walk/run as fast as 5 steps/sec
+	private static final int MAX_STEP_INTERVAL = 2000; //ms, people can walk/run as slow as 1 step/2sec
     private static final int THRESHOLD_WINDOW_SIZE = 50;
 	private Threshold threshold;
 	private StepDetectingStrategy detectingStrategy;
@@ -62,6 +59,8 @@ class StepDetector {
 	private long previousStepTime;
 	private boolean hasValidSteps = false;
 	private long stepInterval;
+	private long previousStepInterval;
+	private float stepIntervalVariance;
 	
 	public StepDetector(Threshold t) {
 		threshold = t;
@@ -71,8 +70,8 @@ class StepDetector {
 		stepInterval = 0;
 		firstStep = true;
 		
-		searchingDetector = new SearchingDetector(this);
-		countingDetector = new CountingDetector(this);
+		searchingDetector = new SearchingDetector();
+		countingDetector = new CountingDetector();
 		detectingStrategy = searchingDetector;
 	}
 
@@ -117,13 +116,24 @@ class StepDetector {
 	private boolean isValidStepInterval(long stepTimeInMilis) {
 		if (firstStep) {
 			previousStepTime = stepTimeInMilis;
+			previousStepInterval = 0;
+			stepIntervalVariance = 0;
 			firstStep = false;
 			return true; //consider the 1st step is valid
 		}
 		else {
 			stepInterval = stepTimeInMilis - previousStepTime;
 			previousStepTime = stepTimeInMilis;
-			if (stepInterval >= 200 && stepInterval <= 2000) { //<200ms, 2000ms>
+			if (stepInterval != 0) {
+				//TODO performance optimization: use multiplication instead of division???
+				stepIntervalVariance = previousStepInterval / ((float)stepInterval);
+				
+			}
+			else {
+				stepIntervalVariance = 0;
+			}
+			previousStepInterval = stepInterval;
+			if (stepInterval >= MIN_STEP_INTERVAL && stepInterval <= MAX_STEP_INTERVAL) {
 				return true;
 			}
 		}
@@ -144,6 +154,10 @@ class StepDetector {
 
 	public long getStepInterval() {
 		return stepInterval;
+	}
+	
+	public float getStepIntervalVariance() {
+		return stepIntervalVariance;
 	}
 	
 	public float getThresholdValue() {

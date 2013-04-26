@@ -115,4 +115,9 @@ public class StepCounter {
 	public long getStepInterval(int axis) {
 		return stepDetectors[axis].getStepInterval();
 	}
+
+	public float getStepIntervalVariance(int axis) {
+		return stepDetectors[axis].getStepIntervalVariance();
+	}
+
 }
