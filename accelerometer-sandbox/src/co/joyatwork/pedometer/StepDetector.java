@@ -12,7 +12,6 @@ class StepDetector {
 		 * are all in the range.
 		 */
 		private static final int VALID_STEPS_COUNT = 4;
-		private StepDetector detector;
 		private int validStepsCount = 0;
 
 		@Override
@@ -46,6 +45,8 @@ class StepDetector {
 
 	private static final int MIN_STEP_INTERVAL = 200;  //ms, people can walk/run as fast as 5 steps/sec
 	private static final int MAX_STEP_INTERVAL = 2000; //ms, people can walk/run as slow as 1 step/2sec
+	private static final float MIN_STEP_INTERVAL_VARIANCE = 0.7F; //-30%
+	private static final float MAX_STEP_INERVAL_VARIANCE = 1.3F;//+30%
     private static final int THRESHOLD_WINDOW_SIZE = 50;
 	private Threshold threshold;
 	private StepDetectingStrategy detectingStrategy;
@@ -59,6 +60,7 @@ class StepDetector {
 	private long previousStepTime;
 	private boolean hasValidSteps = false;
 	private long stepInterval;
+	private long avgStepInterval;
 	private long previousStepInterval;
 	private float stepIntervalVariance;
 	
@@ -116,28 +118,38 @@ class StepDetector {
 	private boolean isValidStepInterval(long stepTimeInMilis) {
 		if (firstStep) {
 			previousStepTime = stepTimeInMilis;
+			stepInterval = 0;
+			avgStepInterval = 0;
 			previousStepInterval = 0;
 			stepIntervalVariance = 0;
 			firstStep = false;
 			return true; //consider the 1st step is valid
 		}
+		
+		stepInterval = stepTimeInMilis - previousStepTime;
+		previousStepTime = stepTimeInMilis;
+		if (stepInterval != 0) {
+			//TODO performance optimization: use multiplication instead of division???
+			stepIntervalVariance = previousStepInterval / ((float)stepInterval);
+			
+		}
 		else {
-			stepInterval = stepTimeInMilis - previousStepTime;
-			previousStepTime = stepTimeInMilis;
-			if (stepInterval != 0) {
-				//TODO performance optimization: use multiplication instead of division???
-				stepIntervalVariance = previousStepInterval / ((float)stepInterval);
-				
-			}
-			else {
-				stepIntervalVariance = 0;
-			}
-			previousStepInterval = stepInterval;
-			if (stepInterval >= MIN_STEP_INTERVAL && stepInterval <= MAX_STEP_INTERVAL) {
-				return true;
-			}
+			stepIntervalVariance = 0;
+		}
+		previousStepInterval = stepInterval;
+		
+		if (isStepIntervalInRange()	&& isStepIntervalVarianceInRange()) {
+			return true;
 		}
 		return false;
+	}
+
+	private boolean isStepIntervalVarianceInRange() {
+		return stepIntervalVariance >= MIN_STEP_INTERVAL_VARIANCE && stepIntervalVariance <= MAX_STEP_INERVAL_VARIANCE;
+	}
+
+	private boolean isStepIntervalInRange() {
+		return stepInterval >= MIN_STEP_INTERVAL && stepInterval <= MAX_STEP_INTERVAL;
 	}
 
 	private void setHasValidSteps(boolean value) {
