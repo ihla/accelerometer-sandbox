@@ -126,7 +126,7 @@ class StepDetector {
 			previousStepTime = stepTimeInMilis;
 			if (stepInterval != 0) {
 				//TODO performance optimization: use multiplication instead of division???
-				stepIntervalVariance = previousStepInterval / ((float)stepInterval);
+				stepIntervalVariance = previousStepInterval / ((float)stepInterval); // float typecast forces float division!
 				
 			}
 			else {
