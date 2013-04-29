@@ -13,14 +13,20 @@ class StepDetector {
 		 */
 		private static final int VALID_STEPS_COUNT = 4;
 		private int validStepsCount = 0;
+		private long avgStepIntervalSum = 0; 
 
 		@Override
 		public void update(float sampleValue, long sampleTimeInMilis) {
 			
-			if (isValidStepInterval(sampleTimeInMilis)) {
+			boolean isFirstStep = check1stStepCalculateStepInterval(sampleTimeInMilis);
+			// refactor this mess!
+			if (isFirstStep || isValidStepInterval()) {
 				validStepsCount++;
+				calculateAvgStepInterval(isFirstStep);
 				if (validStepsCount >= VALID_STEPS_COUNT) {
 					setHasValidSteps(true);
+					validStepsCount = 0; // will be updated after switched back from countingDetector
+					detectingStrategy = countingDetector;
 				}
 			}
 			else {
@@ -30,15 +36,39 @@ class StepDetector {
 		
 		}
 	
+		private void calculateAvgStepInterval(boolean isFirstStep) {
+			if (isFirstStep) {
+				avgStepInterval = 0;
+				avgStepIntervalSum = 0;
+				return;
+			}
+			avgStepIntervalSum += stepInterval;
+			avgStepInterval = avgStepIntervalSum / validStepsCount;
+		}
+
 	}
 	
 	class CountingDetector implements StepDetectingStrategy {
 
-		private StepDetector detector;
-
 		@Override
 		public void update(float sampleValue, long sampleTimeInMilis) {
-			
+			calculateStepInterval(sampleTimeInMilis);
+			calculateStepIntervalVariance(avgStepInterval);
+			if (isValidStepInterval()) {
+				//TODO update counter
+			}
+			else {
+				// Rhythmic pattern lost - switch back to searching
+				setHasValidSteps(false);
+				setFirstStep(true);
+				detectingStrategy = searchingDetector;
+				detectingStrategy.update(sampleValue, sampleTimeInMilis); //update to not lose any step
+			}
+				
+		}
+
+		private void setFirstStep(boolean val) {
+			firstStep = val;
 		}
 		
 	}
@@ -85,11 +115,11 @@ class StepDetector {
 		calculateThreshold(newSample);
 		
 		if (hasValidPeak() && isCrossingBelowThreshold(newSample)) {
-			restartPeakMeasurement();
 			//TODO ???
 			stepCount++;
 			//detectingStrategy sets back the hasValidSteps flag!
 			detectingStrategy.update(newSample, sampleTimeInMilis);
+			restartPeakMeasurement();
 		}
 		lastSample = newSample;
 	}
@@ -115,30 +145,45 @@ class StepDetector {
 		thresholdValue = threshold.getThresholdValue();
 	}
 
-	private boolean isValidStepInterval(long stepTimeInMilis) {
+	/**
+	 * Checks the step period as one of the characteristics of step rhythmic pattern
+	 * @param sampleTimeInMilis
+	 * @return - true if the 1st step is detected
+	 */
+	private boolean check1stStepCalculateStepInterval(long sampleTimeInMilis) {
 		if (firstStep) {
-			previousStepTime = stepTimeInMilis;
+			previousStepTime = sampleTimeInMilis;
 			stepInterval = 0;
-			avgStepInterval = 0;
 			previousStepInterval = 0;
 			stepIntervalVariance = 0;
 			firstStep = false;
 			return true; //consider the 1st step is valid
 		}
 		
-		stepInterval = stepTimeInMilis - previousStepTime;
-		previousStepTime = stepTimeInMilis;
-		if (stepInterval != 0) {
-			//TODO performance optimization: use multiplication instead of division???
-			stepIntervalVariance = previousStepInterval / ((float)stepInterval);
-			
-		}
-		else {
-
-			stepIntervalVariance = 0;
-		}
+		calculateStepInterval(sampleTimeInMilis);
+		calculateStepIntervalVariance(previousStepInterval);
 		previousStepInterval = stepInterval;
 		
+		return false;
+	}
+
+	private void calculateStepIntervalVariance(long referenceValue) {
+		if (stepInterval != 0) {
+			//TODO performance optimization: use multiplication instead of division???
+			stepIntervalVariance = referenceValue / ((float)stepInterval);
+		}
+		else {
+			stepIntervalVariance = 0;
+		}
+	}
+
+	private void calculateStepInterval(long sampleTimeInMilis) {
+		stepInterval = sampleTimeInMilis - previousStepTime;
+		previousStepTime = sampleTimeInMilis;
+	}
+
+
+	private boolean isValidStepInterval() {
 		if (isStepIntervalInRange()	&& isStepIntervalVarianceInRange()) {
 			return true;
 		}
@@ -168,7 +213,11 @@ class StepDetector {
 	public long getStepInterval() {
 		return stepInterval;
 	}
-	
+
+	public long getAvgStepInterval() {
+		return avgStepInterval;
+	}
+
 	public float getStepIntervalVariance() {
 		return stepIntervalVariance;
 	}
