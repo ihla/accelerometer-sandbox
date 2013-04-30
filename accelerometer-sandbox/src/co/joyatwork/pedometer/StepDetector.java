@@ -8,69 +8,99 @@ class StepDetector {
 	
 	class SearchingDetector implements StepDetectingStrategy {
 		/**
-		 * Step count is valid if intervals between 4 consecutive steps
-		 * are all in the range.
+		 * Step count is valid if 4 intervals between 5 consecutive steps
+		 * are all in the range, and all interval variances are in range.
 		 */
-		private static final int VALID_STEPS_COUNT = 4;
-		private int validStepsCount = 0;
+		private static final int VALID_STEPS_COUNT = 5;
+		private int validStepsCount = 1; //anticipate the 1st step is ok, next steps will be validated
 		private long avgStepIntervalSum = 0; 
 
 		@Override
-		public void update(float sampleValue, long sampleTimeInMilis) {
+		public void update(float sampleValue /* not used */, long sampleTimeInMilis) {
 			
-			boolean isFirstStep = check1stStepCalculateStepInterval(sampleTimeInMilis);
-			// refactor this mess!
-			if (isFirstStep || isValidStepInterval()) {
+			//TODO refactor this mess!
+			calculateStepInterval(sampleTimeInMilis);
+			if (isStepIntervalInRange()) {
+				
+				avgStepIntervalSum += stepInterval;
+				
+				if (validStepsCount < 2) { // 2 intervals for variance calculation not measured yet
+					previousStepInterval = stepInterval;
+					validStepsCount++; // add step, next steps will be validated at the next run
+					setHasValidSteps(false);
+					return;
+				}
+				
+				calculateStepIntervalVarianceFor(previousStepInterval);
+				if (isStepIntervalVarianceInRange() == false) {
+					/*  if any one out of the step no. 3,4,5 has variance out of range,
+					 *  the step counting is restarted!
+					 */
+					avgStepIntervalSum = 0;
+					stepIntervalVariance = 0;
+					validStepsCount = 1; // reset and quit
+					setHasValidSteps(false);
+					return;
+				}
+
 				validStepsCount++;
-				calculateAvgStepInterval(isFirstStep);
 				if (validStepsCount >= VALID_STEPS_COUNT) {
+					avgStepInterval = avgStepIntervalSum / (validStepsCount - 1);
 					setHasValidSteps(true);
-					validStepsCount = 0; // will be updated after switched back from countingDetector
-					detectingStrategy = countingDetector;
+					detectingStrategy = countingDetector; // steps validated, switch to counting
 				}
 			}
-			else {
-				validStepsCount = 0;
+			else { // step interval out of range
+				avgStepIntervalSum = 0;
+				validStepsCount = 1; //reset to 1 - the 1st step is added
+				previousStepInterval = stepInterval;
 				setHasValidSteps(false);
 			}
 		
 		}
-	
-		private void calculateAvgStepInterval(boolean isFirstStep) {
-			if (isFirstStep) {
-				avgStepInterval = 0;
-				avgStepIntervalSum = 0;
-				return;
-			}
-			avgStepIntervalSum += stepInterval;
-			avgStepInterval = avgStepIntervalSum / validStepsCount;
-		}
 
+		public void reset(long initPreviousStepTime, long initPreviousStepInterval) {
+			previousStepTime = initPreviousStepTime;
+			previousStepInterval = initPreviousStepInterval;
+			validStepsCount = 1;
+			avgStepIntervalSum = 0;
+			avgStepInterval = 0;
+			stepIntervalVariance = 0;
+			setHasValidSteps(false);
+		}
+	
 	}
 	
 	class CountingDetector implements StepDetectingStrategy {
 
 		@Override
 		public void update(float sampleValue, long sampleTimeInMilis) {
+			
+			long tmpPreviousStepTime = previousStepTime;
+			long tmpPreviousStepInterval = previousStepInterval;
+			
 			calculateStepInterval(sampleTimeInMilis);
-			calculateStepIntervalVariance(avgStepInterval);
-			if (isValidStepInterval()) {
-				//TODO update counter
+			if (isStepIntervalInRange()) {
+				
+				calculateStepIntervalVarianceFor(avgStepInterval);
+				if (isStepIntervalVarianceInRange()) {
+					//TODO update counter
+					
+				}
+				else { // step interval variance out of range - switch to searching
+					detectingStrategy = searchingDetector;
+					searchingDetector.reset(tmpPreviousStepTime, tmpPreviousStepInterval);
+					searchingDetector.update(sampleValue, sampleTimeInMilis);
+				}
 			}
-			else {
-				// Rhythmic pattern lost - switch back to searching
-				setHasValidSteps(false);
-				setFirstStep(true);
+			else { // step interval out of range - switch to searching
 				detectingStrategy = searchingDetector;
-				detectingStrategy.update(sampleValue, sampleTimeInMilis); //update to not lose any step
+				searchingDetector.reset(tmpPreviousStepTime, tmpPreviousStepInterval);
+				searchingDetector.update(sampleValue, sampleTimeInMilis);
 			}
 				
 		}
 
-		private void setFirstStep(boolean val) {
-			firstStep = val;
-		}
-		
 	}
 
 	private static final int MIN_STEP_INTERVAL = 200;  //ms, people can walk/run as fast as 5 steps/sec
@@ -88,7 +118,7 @@ class StepDetector {
 	private float thresholdValue;
 	private boolean firstStep;
 	private long previousStepTime;
-	private boolean hasValidSteps = false;
+	private boolean hasValidSteps;
 	private long stepInterval;
 	private long avgStepInterval;
 	private long previousStepInterval;
@@ -96,10 +126,17 @@ class StepDetector {
 	
 	public StepDetector(Threshold t) {
 		threshold = t;
-		stepCount = 0; 
 		lastSample = 0;
 		thresholdValue = 0;
+		stepCount = 0; 
 		stepInterval = 0;
+		avgStepInterval = 0;
+		previousStepTime = 0;
+		previousStepInterval = 0;
+		stepIntervalVariance = 0;
+		hasValidSteps = false;
+		
+		
 		firstStep = true;
 		
 		searchingDetector = new SearchingDetector();
@@ -161,13 +198,13 @@ class StepDetector {
 		}
 		
 		calculateStepInterval(sampleTimeInMilis);
-		calculateStepIntervalVariance(previousStepInterval);
+		calculateStepIntervalVarianceFor(previousStepInterval);
 		previousStepInterval = stepInterval;
 		
 		return false;
 	}
 
-	private void calculateStepIntervalVariance(long referenceValue) {
+	private void calculateStepIntervalVarianceFor(long referenceValue) {
 		if (stepInterval != 0) {
 			//TODO performance optimization: use multiplication instead of division???
 			stepIntervalVariance = referenceValue / ((float)stepInterval);
@@ -175,6 +212,7 @@ class StepDetector {
 		else {
 			stepIntervalVariance = 0;
 		}
+		previousStepInterval = stepInterval;
 	}
 
 	private void calculateStepInterval(long sampleTimeInMilis) {
