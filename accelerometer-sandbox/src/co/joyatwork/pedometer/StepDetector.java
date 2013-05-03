@@ -45,6 +45,7 @@ class StepDetector {
 
 				validStepsCount++;
 				if (validStepsCount >= VALID_STEPS_COUNT) {
+					stepCount += validStepsCount;
 					avgStepInterval = avgStepIntervalSum / (validStepsCount - 1);
 					setHasValidSteps(true);
 					detectingStrategy = countingDetector; // steps validated, switch to counting
@@ -84,8 +85,9 @@ class StepDetector {
 				
 				calculateStepIntervalVarianceFor(avgStepInterval);
 				if (isStepIntervalVarianceInRange()) {
-					//TODO update counter
 					
+					stepCount++;
+
 				}
 				else { // step interval variance out of range - switch to searching
 					detectingStrategy = searchingDetector;
@@ -113,10 +115,10 @@ class StepDetector {
 	private SearchingDetector searchingDetector;
 	private CountingDetector countingDetector;
 	
+	private int crossingThresholdCount;
 	private int stepCount;
 	private float lastSample;
 	private float thresholdValue;
-	private boolean firstStep;
 	private long previousStepTime;
 	private boolean hasValidSteps;
 	private long stepInterval;
@@ -128,16 +130,14 @@ class StepDetector {
 		threshold = t;
 		lastSample = 0;
 		thresholdValue = 0;
-		stepCount = 0; 
+		crossingThresholdCount = 0;
+		stepCount = 0;
 		stepInterval = 0;
 		avgStepInterval = 0;
 		previousStepTime = 0;
 		previousStepInterval = 0;
 		stepIntervalVariance = 0;
 		hasValidSteps = false;
-		
-		
-		firstStep = true;
 		
 		searchingDetector = new SearchingDetector();
 		countingDetector = new CountingDetector();
@@ -152,11 +152,10 @@ class StepDetector {
 		calculateThreshold(newSample);
 		
 		if (hasValidPeak() && isCrossingBelowThreshold(newSample)) {
-			//TODO ???
-			stepCount++;
+			crossingThresholdCount++; //TODO this counter is for testing
 			//detectingStrategy sets back the hasValidSteps flag!
 			detectingStrategy.update(newSample, sampleTimeInMilis);
-			restartPeakMeasurement();
+			restartPeakMeasurement(); //TODO better to put this into the update()
 		}
 		lastSample = newSample;
 	}
@@ -182,28 +181,6 @@ class StepDetector {
 		thresholdValue = threshold.getThresholdValue();
 	}
 
-	/**
-	 * Checks the step period as one of the characteristics of step rhythmic pattern
-	 * @param sampleTimeInMilis
-	 * @return - true if the 1st step is detected
-	 */
-	private boolean check1stStepCalculateStepInterval(long sampleTimeInMilis) {
-		if (firstStep) {
-			previousStepTime = sampleTimeInMilis;
-			stepInterval = 0;
-			previousStepInterval = 0;
-			stepIntervalVariance = 0;
-			firstStep = false;
-			return true; //consider the 1st step is valid
-		}
-		
-		calculateStepInterval(sampleTimeInMilis);
-		calculateStepIntervalVarianceFor(previousStepInterval);
-		previousStepInterval = stepInterval;
-		
-		return false;
-	}
-
 	private void calculateStepIntervalVarianceFor(long referenceValue) {
 		if (stepInterval != 0) {
 			//TODO performance optimization: use multiplication instead of division???
@@ -220,13 +197,6 @@ class StepDetector {
 		previousStepTime = sampleTimeInMilis;
 	}
 
-
-	private boolean isValidStepInterval() {
-		if (isStepIntervalInRange()	&& isStepIntervalVarianceInRange()) {
-			return true;
-		}
-		return false;
-	}
 
 	private boolean isStepIntervalVarianceInRange() {
 		return stepIntervalVariance >= MIN_STEP_INTERVAL_VARIANCE && stepIntervalVariance <= MAX_STEP_INERVAL_VARIANCE;
@@ -246,6 +216,10 @@ class StepDetector {
 
 	public int getStepCount() {
 		return stepCount;
+	}
+	
+	public int getCrossingThresholdCount() {
+		return crossingThresholdCount;
 	}
 
 	public long getStepInterval() {

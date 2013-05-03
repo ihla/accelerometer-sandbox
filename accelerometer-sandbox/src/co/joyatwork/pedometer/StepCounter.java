@@ -23,12 +23,12 @@ public class StepCounter {
     private static final float ALPHA = 0.8f;
     private float[] gravity = new float[3];
 	private float[] linearAccelerationVector = new float[3];
-	private float[] lastStepCounters = new float[3];
+	private int[] crossingThresholdCnt = new int[3];
 	private int[] stepCnt = new int[3];
 	
 	public StepCounter() {
 		for (int i = 0; i < 3; i++) {
-			lastStepCounters[i] = 0;
+			crossingThresholdCnt[i] = 0;
 			stepCnt[i] = 0;
 		}
 	}
@@ -70,9 +70,13 @@ public class StepCounter {
 	private int[] updateStepCounters(long sampleTimeInMilis) {
 		for(int i = 0; i < 3; i++) {
 			stepDetectors[i].update(smoothedAccelerationVector[i], sampleTimeInMilis);
-			stepCnt[i] = stepDetectors[i].getStepCount();
+			crossingThresholdCnt[i] = stepDetectors[i].getCrossingThresholdCount();
 		}
-		return stepCnt;
+		return crossingThresholdCnt;
+	}
+
+	public int getStepCount(int axis) {
+		return stepDetectors[axis].getStepCount();
 	}
 
 	//for testing
@@ -123,5 +127,6 @@ public class StepCounter {
 	public float getStepIntervalVariance(int axis) {
 		return stepDetectors[axis].getStepIntervalVariance();
 	}
+
 
 }

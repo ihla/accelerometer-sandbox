@@ -101,12 +101,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private float[] smoothedValues;
 	private float[] thresholdValues;
 	private SimpleXYSeries dataPlotSeries3;
-	private float xStep;
-	private float yStep;
-	private float zStep;
+	private float xCrossing;
+	private float yCrossing;
+	private float zCrossing;
 	private SimpleXYSeries dataPlotSeries4;
 	private StepCounter stepCounter;
-	private int[] oldStepCounts;
+	private int[] oldCrossingThresholdCounts;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -117,14 +117,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		
 		stepCounter = new StepCounter();
-		oldStepCounts = new int[3];
-		oldStepCounts[0] = 0;
-		oldStepCounts[1] = 0;
-		oldStepCounts[2] = 0;
+		oldCrossingThresholdCounts = new int[3];
+		oldCrossingThresholdCounts[0] = 0;
+		oldCrossingThresholdCounts[1] = 0;
+		oldCrossingThresholdCounts[2] = 0;
 		
-		xStep = -0.5F;
-		yStep = -0.5F;
-		zStep = -0.5F;
+		xCrossing = -0.5F;
+		yCrossing = -0.5F;
+		zCrossing = -0.5F;
 		
 		// set xy plot
 		accelerationPlot = (XYPlot) findViewById(R.id.accelerationPlot);
@@ -240,38 +240,38 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sampleTime = event.timestamp;
 		long sampleTimeInMilis = sampleTime / 1000000;
         
-		int[] stepCounts = stepCounter.countSteps(values, sampleTimeInMilis);
+		int[] crossingThresholdCounts = stepCounter.countSteps(values, sampleTimeInMilis);
 		
 		//TODO temp visualization of step counting
-		if (oldStepCounts[0] != stepCounts[0]) {
-			xStep *= -1;
+		if (oldCrossingThresholdCounts[0] != crossingThresholdCounts[0]) {
+			xCrossing *= -1;
 		}
-		if (oldStepCounts[1] != stepCounts[1]) {
-			yStep *= -1;
+		if (oldCrossingThresholdCounts[1] != crossingThresholdCounts[1]) {
+			yCrossing *= -1;
 		}
-		if (oldStepCounts[2] != stepCounts[2]) {
-			zStep *= -1;
+		if (oldCrossingThresholdCounts[2] != crossingThresholdCounts[2]) {
+			zCrossing *= -1;
 		}
-		oldStepCounts[0] = stepCounts[0];
-		oldStepCounts[1] = stepCounts[1];
-		oldStepCounts[2] = stepCounts[2];
+		oldCrossingThresholdCounts[0] = crossingThresholdCounts[0];
+		oldCrossingThresholdCounts[1] = crossingThresholdCounts[1];
+		oldCrossingThresholdCounts[2] = crossingThresholdCounts[2];
 		
 		values = stepCounter.getLinearAccelerationValues();
 		smoothedValues = stepCounter.getSmoothedAccelerationValues();
 		thresholdValues = stepCounter.getThresholdValues();
  
-		updateTextViewCounters(stepCounts);
+		updateTextViewCounters(crossingThresholdCounts);
 		writeData();
  	    plotData();
 	}
 
-	private void updateTextViewCounters(int[] stepCounts) {
+	private void updateTextViewCounters(int[] crossingThresholdCounts) {
 		TextView xStepsCountView = (TextView) findViewById(R.id.xStepsCountTextView);
-		xStepsCountView.setText("" + stepCounts[0]);
+		xStepsCountView.setText("" + crossingThresholdCounts[0] + "\\" + stepCounter.getStepCount(0));
 		TextView yStepsCountView = (TextView) findViewById(R.id.yStepsCountTextView);
-		yStepsCountView.setText("" + stepCounts[1]);
+		yStepsCountView.setText("" + crossingThresholdCounts[1]  + "\\" + stepCounter.getStepCount(1));
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
-		zStepsCountView.setText("" + stepCounts[2]);
+		zStepsCountView.setText("" + crossingThresholdCounts[2]  + "\\" + stepCounter.getStepCount(2));
 		
 		if (stepCounter.hasValidSteps(0)) {
 			xStepsCountView.setTextColor(Color.RED);
@@ -325,7 +325,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        addDataPoint(dataPlotSeries1, timestamp, values[2]);
 	        addDataPoint(dataPlotSeries2, timestamp, smoothedValues[2]);
 	        addDataPoint(dataPlotSeries3, timestamp, thresholdValues[2]);
-	        addDataPoint(dataPlotSeries4, timestamp, zStep);
+	        addDataPoint(dataPlotSeries4, timestamp, zCrossing);
 	        dataPlot.redraw();
 	        
 	        lastChartRefresh = current;
@@ -364,21 +364,21 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(timeStampInMilis).append(CSV_DELIM)
 				.append(smoothedValues[0]).append(CSV_DELIM)
 				.append(thresholdValues[0]).append(CSV_DELIM)
-				.append(xStep).append(CSV_DELIM)
+				.append(xCrossing).append(CSV_DELIM)
 				.append(stepCounter.getStepInterval(0)).append(CSV_DELIM)
 				.append(stepCounter.getAvgStepInterval(0)).append(CSV_DELIM)
 				.append(stepCounter.getStepIntervalVariance(0)).append(CSV_DELIM)
 				.append(stepCounter.hasValidSteps(0)).append(CSV_DELIM)
 				.append(smoothedValues[1]).append(CSV_DELIM)
 				.append(thresholdValues[1]).append(CSV_DELIM)
-				.append(yStep).append(CSV_DELIM)
+				.append(yCrossing).append(CSV_DELIM)
 				.append(stepCounter.getStepInterval(1)).append(CSV_DELIM)
 				.append(stepCounter.getAvgStepInterval(1)).append(CSV_DELIM)
 				.append(stepCounter.getStepIntervalVariance(1)).append(CSV_DELIM)
 				.append(stepCounter.hasValidSteps(1)).append(CSV_DELIM)
 				.append(smoothedValues[2]).append(CSV_DELIM)
 				.append(thresholdValues[2]).append(CSV_DELIM)
-				.append(zStep).append(CSV_DELIM)
+				.append(zCrossing).append(CSV_DELIM)
 				.append(stepCounter.getStepInterval(2)).append(CSV_DELIM)
 				.append(stepCounter.getAvgStepInterval(2)).append(CSV_DELIM)
 				.append(stepCounter.getStepIntervalVariance(2)).append(CSV_DELIM)
