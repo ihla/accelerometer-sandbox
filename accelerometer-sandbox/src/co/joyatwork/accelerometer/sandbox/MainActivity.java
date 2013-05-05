@@ -35,7 +35,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final String CSV_HEADER_ACCEL_FILE =
             "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg";
     private static final String CSV_HEADER_STEPS_FILE =
-    		"Time,X-Avg,X-Thld,X-Step,X-Int,X-AvgInt,X-Var,X-Val,Y-Avg,Y-Thld,Y-Step,Y-Int,Y-AvgInt,Y-Var,Y-Val,Z-Avg,Z-Thld,Z-Step,Z-Int,Z-AvgInt,Z-Var,Z-Val";
+    		"Time,X-Avg,X-Thld,X-Step,X-Int,X-AvgInt,X-Var,X-Val,Y-Avg,Y-Thld,Y-Step,Y-Int,Y-AvgInt,Y-Var,Y-Val,Z-Avg,Z-Thld,Z-Step,Z-Int,Z-AvgInt,Z-Var,Z-Val,XMin,XMax,YMin,YMax,ZMin,ZMax";
     private static final String CSV_HEADER_P2P_FILE =
             "Time,X-Avg,Y-Avg,Z-Avg,X-CurrP,X-P,Y-CurrP,Y-P,Z-CurrP,Z-P";
 
@@ -383,14 +383,15 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(stepCounter.getAvgStepInterval(2)).append(CSV_DELIM)
 				.append(stepCounter.getStepIntervalVariance(2)).append(CSV_DELIM)
 				.append(stepCounter.hasValidSteps(2))
-				/*
+				
+				.append(CSV_DELIM)
 				.append(stepCounter.getFixedMinValue(0)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMaxValue(0)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMinValue(1)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMaxValue(1)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMinValue(2)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMaxValue(2)).append(CSV_DELIM)
-				*/
+				/**/
 				;
 
 			stepsDataWriter.println(sb.toString());

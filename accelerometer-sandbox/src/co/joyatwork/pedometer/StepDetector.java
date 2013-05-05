@@ -1,5 +1,7 @@
 package co.joyatwork.pedometer;
 
+import co.joyatwork.filters.MovingAverage;
+
 class StepDetector {
 	
 	interface StepDetectingStrategy {
@@ -104,6 +106,8 @@ class StepDetector {
 		}
 
 	}
+	
+    private static final float ALPHA = 0.8f; // constant of low pass filter for eliminating gravity from acceleration 
 
 	private static final int MIN_STEP_INTERVAL = 200;  //ms, people can walk/run as fast as 5 steps/sec
 	private static final int MAX_STEP_INTERVAL = 2000; //ms, people can walk/run as slow as 1 step/2sec
@@ -125,6 +129,13 @@ class StepDetector {
 	private long avgStepInterval;
 	private long previousStepInterval;
 	private float stepIntervalVariance;
+	private float gravity;
+	private float linearAcceleration;
+
+    private static final int MOVING_AVG_WINDOW_SIZE = 10;
+	private MovingAverage movingAvgCalculator = new MovingAverage(MOVING_AVG_WINDOW_SIZE);
+
+	private float smoothedAcceleration;
 	
 	public StepDetector(Threshold t) {
 		threshold = t;
@@ -138,6 +149,9 @@ class StepDetector {
 		previousStepInterval = 0;
 		stepIntervalVariance = 0;
 		hasValidSteps = false;
+		gravity = 0;
+		linearAcceleration = 0;
+		smoothedAcceleration = 0; //we need this field for testing
 		
 		searchingDetector = new SearchingDetector();
 		countingDetector = new CountingDetector();
@@ -149,15 +163,22 @@ class StepDetector {
 	}
 
 	public void update(float newSample, long sampleTimeInMilis) {
-		calculateThreshold(newSample);
 		
-		if (hasValidPeak() && isCrossingBelowThreshold(newSample)) {
+		// digital filtering
+		calculateLinearAcceleration(newSample);
+		smoothLinearAcceleration();
+		
+		// dynamic threshold
+		//TODO smoothedAcceleration - choose better names???
+		calculateThreshold(smoothedAcceleration);
+		
+		if (hasValidPeak() && isCrossingBelowThreshold(smoothedAcceleration)) {
 			crossingThresholdCount++; //TODO this counter is for testing
 			//detectingStrategy sets back the hasValidSteps flag!
-			detectingStrategy.update(newSample, sampleTimeInMilis);
+			detectingStrategy.update(smoothedAcceleration, sampleTimeInMilis);
 			restartPeakMeasurement(); //TODO better to put this into the update()
 		}
-		lastSample = newSample;
+		lastSample = smoothedAcceleration;
 	}
 
 	private void restartPeakMeasurement() {
@@ -171,6 +192,25 @@ class StepDetector {
 	private boolean hasValidPeak() {
 		//TODO how to ignore low values?
 		return threshold.getCurrentMaxValue() > 0.3F;
+	}
+
+	/**
+	 * Calculates gravity-less values from acceleration samples by simple inverted Low Pass.
+	 * @param acceleration - sensor samples 
+	 */
+	private void calculateLinearAcceleration(float acceleration) {
+		//Low Pass
+		gravity = ALPHA * gravity + (1 - ALPHA) * acceleration;
+		//High Pass = Inverted Low Pass
+		linearAcceleration = acceleration - gravity;
+	}
+
+	/**
+	 * Smoothes values by Moving Average Filter
+	 */
+	private void smoothLinearAcceleration() {
+		movingAvgCalculator.pushValue(linearAcceleration);
+		smoothedAcceleration = movingAvgCalculator.getValue();
 	}
 
     /**
@@ -254,4 +294,11 @@ class StepDetector {
 		return threshold.getFixedMaxValue();
 	}
 
+	float getLinearAcceleration() {
+		return linearAcceleration;
+	}
+
+	float getSmoothedAcceleration() {
+		return smoothedAcceleration;
+	}
 }
