@@ -113,5 +113,28 @@
         android:layout_alignLeft="@+id/zStepsCountTextView"
         android:ems="10"
         android:text="-" />
+
+    <TextView
+        android:id="@+id/stepsCounterView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/maxP2PTextView"
+        android:layout_marginLeft="13dp"
+        android:ems="10"
+        android:gravity="right"
+        android:text="Steps Counter"
+        android:textSize="@dimen/stepsCounter" />
+
+    <TextView
+        android:id="@+id/stepsCounterValueTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/maxP2PAxisTextView"
+        android:layout_toRightOf="@+id/stepsCounterView"
+        android:ems="10"
+        android:gravity="center_horizontal"
+        android:text="0"
+        android:textSize="@dimen/stepsCounter" />
     
 </RelativeLayout>

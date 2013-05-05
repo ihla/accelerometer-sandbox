@@ -89,6 +89,7 @@ class StepDetector {
 				if (isStepIntervalVarianceInRange()) {
 					
 					stepCount++;
+					setHasValidSteps(true);
 
 				}
 				else { // step interval variance out of range - switch to searching
@@ -171,7 +172,8 @@ class StepDetector {
 		// dynamic threshold
 		//TODO smoothedAcceleration - choose better names???
 		calculateThreshold(smoothedAcceleration);
-		
+	
+		setHasValidSteps(false); // will be set by detecting strategy if steps validated
 		if (hasValidPeak() && isCrossingBelowThreshold(smoothedAcceleration)) {
 			crossingThresholdCount++; //TODO this counter is for testing
 			//detectingStrategy sets back the hasValidSteps flag!

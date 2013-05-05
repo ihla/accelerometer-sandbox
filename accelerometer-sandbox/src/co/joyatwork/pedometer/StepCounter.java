@@ -6,44 +6,71 @@ public class StepCounter {
 	public static final int Y_AXIS = 1;
 	public static final int Z_AXIS = 2;
 
-	private StepDetector[] stepDetectors = { new StepDetector(),
+	private StepDetector[] stepDetector = { new StepDetector(),
 			new StepDetector(),
 			new StepDetector()
 	};
 
-	private int[] crossingThresholdCnt = new int[3];
-	private int[] stepCnt = new int[3];
+	private int[] lastStepCount = new int[3];
+	float[] peak2peakValue = new float[3];
+	private int stepCounter;
 	
 	public StepCounter() {
 		for (int i = 0; i < 3; i++) {
-			crossingThresholdCnt[i] = 0;
-			stepCnt[i] = 0;
+			lastStepCount[i] = 0;
 		}
+		stepCounter = 0;
 	}
 	
-	public int[] countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
+	public void countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
 
-		return updateStepCounters(accelerationSamples, sampleTimeInMilis);
-
-	}
-
-	private int[] updateStepCounters(float[] accelerationSamples, long sampleTimeInMilis) {
-		for(int i = 0; i < 3; i++) {
-			stepDetectors[i].update(accelerationSamples[i], sampleTimeInMilis);
-			crossingThresholdCnt[i] = stepDetectors[i].getCrossingThresholdCount();
+		updateStepCounters(accelerationSamples, sampleTimeInMilis);
+		
+		float maxPeak2PeakValue = 0;
+		int selectedAxis = -1;
+		for (int i = 0; i < 3; i++) {
+			if (stepDetector[i].hasValidSteps()) {
+				float peak2peakValue = stepDetector[i].getFixedPeak2PeakValue();
+				if (peak2peakValue > maxPeak2PeakValue) {
+					selectedAxis = i;
+					maxPeak2PeakValue = peak2peakValue;
+				}
+			}
 		}
-		return crossingThresholdCnt;
+		
+		if (selectedAxis >= 0) {
+			stepCounter += stepDetector[selectedAxis].getStepCount() - lastStepCount[selectedAxis]; // add delta
+			// store counts for next delta calculation
+			for (int i = 0; i < 3; i++) {
+				lastStepCount[i] = stepDetector[i].getStepCount();
+			}
+		} 
+
 	}
 
-	public int getStepCount(int axis) {
-		return stepDetectors[axis].getStepCount();
+	private void updateStepCounters(float[] accelerationSamples, long sampleTimeInMilis) {
+		for(int i = 0; i < 3; i++) {
+			stepDetector[i].update(accelerationSamples[i], sampleTimeInMilis);
+		}
 	}
 
+	public int getStepCount() {
+		return stepCounter;
+	}
+	
 	//for testing
+	public int getCrossingThresholdCount(int axis) {
+		return stepDetector[axis].getCrossingThresholdCount();
+	}
+
+	public int getAxisStepCount(int axis) {
+		return stepDetector[axis].getStepCount();
+	}
+
 	public float[] getLinearAccelerationValues() {
 		float[] linearAccelerationVector = new float[3];
 		for (int axis = 0; axis < 3; axis++) {
-			linearAccelerationVector[axis] = stepDetectors[axis].getLinearAcceleration();
+			linearAccelerationVector[axis] = stepDetector[axis].getLinearAcceleration();
 		}
 		return linearAccelerationVector;
 	}
@@ -51,7 +78,7 @@ public class StepCounter {
 	public float[] getSmoothedAccelerationValues() {
 		float[] smoothedAccelerationVector = new float[3];
 		for (int axis = 0; axis < 3; axis++) {
-			smoothedAccelerationVector[axis] = stepDetectors[axis].getSmoothedAcceleration();
+			smoothedAccelerationVector[axis] = stepDetector[axis].getSmoothedAcceleration();
 		}
 		return smoothedAccelerationVector;
 	}
@@ -59,49 +86,49 @@ public class StepCounter {
 	public float[] getThresholdValues() {
 		float[] thresholdValues = new float[3];
 		for(int i = 0; i < 3; i++) {
-			thresholdValues[i] = stepDetectors[i].getThresholdValue();
+			thresholdValues[i] = stepDetector[i].getThresholdValue();
 		}
 		return thresholdValues;
 	}
     
 	public float getLinearAcceleration(int axis) {
-		return stepDetectors[axis].getLinearAcceleration();
+		return stepDetector[axis].getLinearAcceleration();
 	}
 	
 	public float getSmoothedAcceleration(int axis) {
-		return stepDetectors[axis].getSmoothedAcceleration();
+		return stepDetector[axis].getSmoothedAcceleration();
 	}
 	
 	public float getFixedPeak2PeakValue(int axis) {
-		return stepDetectors[axis].getFixedPeak2PeakValue();
+		return stepDetector[axis].getFixedPeak2PeakValue();
 	}
 	
 	public float getCurrentPeak2PeakValue(int axis) {
-		return stepDetectors[axis].getCurrentPeak2PeakValue();
+		return stepDetector[axis].getCurrentPeak2PeakValue();
 	}
 
 	public float getFixedMinValue(int axis) {
-		return stepDetectors[axis].getFixedMinValue();
+		return stepDetector[axis].getFixedMinValue();
 	}
 
 	public float getFixedMaxValue(int axis) {
-		return stepDetectors[axis].getFixedMaxValue();
+		return stepDetector[axis].getFixedMaxValue();
 	}
 
 	public boolean hasValidSteps(int axis) {
-		return stepDetectors[axis].hasValidSteps();
+		return stepDetector[axis].hasValidSteps();
 	}
 	
 	public long getStepInterval(int axis) {
-		return stepDetectors[axis].getStepInterval();
+		return stepDetector[axis].getStepInterval();
 	}
 
 	public long getAvgStepInterval(int axis) {
-		return stepDetectors[axis].getAvgStepInterval();
+		return stepDetector[axis].getAvgStepInterval();
 	}
 
 	public float getStepIntervalVariance(int axis) {
-		return stepDetectors[axis].getStepIntervalVariance();
+		return stepDetector[axis].getStepIntervalVariance();
 	}
 
 

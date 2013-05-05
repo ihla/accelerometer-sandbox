@@ -35,7 +35,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final String CSV_HEADER_ACCEL_FILE =
             "Time,X Axis,Y Axis,Z Axis,X Avg,Y Avg,Z Avg";
     private static final String CSV_HEADER_STEPS_FILE =
-    		"Time,X-Avg,X-Thld,X-Step,X-Int,X-AvgInt,X-Var,X-Val,Y-Avg,Y-Thld,Y-Step,Y-Int,Y-AvgInt,Y-Var,Y-Val,Z-Avg,Z-Thld,Z-Step,Z-Int,Z-AvgInt,Z-Var,Z-Val,XMin,XMax,YMin,YMax,ZMin,ZMax";
+    		"Time,X-Avg,X-Thld,X-Step,X-Int,X-AvgInt,X-Var,X-Val,Y-Avg,Y-Thld,Y-Step,Y-Int,Y-AvgInt,Y-Var,Y-Val,Z-Avg,Z-Thld,Z-Step,Z-Int,Z-AvgInt,Z-Var,Z-Val";
     private static final String CSV_HEADER_P2P_FILE =
             "Time,X-Avg,Y-Avg,Z-Avg,X-CurrP,X-P,Y-CurrP,Y-P,Z-CurrP,Z-P";
 
@@ -107,6 +107,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private SimpleXYSeries dataPlotSeries4;
 	private StepCounter stepCounter;
 	private int[] oldCrossingThresholdCounts;
+	private int stepCounterValue;
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -240,7 +241,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 		sampleTime = event.timestamp;
 		long sampleTimeInMilis = sampleTime / 1000000;
         
-		int[] crossingThresholdCounts = stepCounter.countSteps(values, sampleTimeInMilis);
+		stepCounter.countSteps(values, sampleTimeInMilis);
+		int[] crossingThresholdCounts = new int[3];
+		for (int i = 0; i < 3; i++) {
+			crossingThresholdCounts[i] = stepCounter.getCrossingThresholdCount(i);
+		}
+		stepCounterValue = stepCounter.getStepCount();
 		
 		//TODO temp visualization of step counting
 		if (oldCrossingThresholdCounts[0] != crossingThresholdCounts[0]) {
@@ -267,11 +273,11 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private void updateTextViewCounters(int[] crossingThresholdCounts) {
 		TextView xStepsCountView = (TextView) findViewById(R.id.xStepsCountTextView);
-		xStepsCountView.setText("" + crossingThresholdCounts[0] + "\\" + stepCounter.getStepCount(0));
+		xStepsCountView.setText("" + crossingThresholdCounts[0] + "\\" + stepCounter.getAxisStepCount(0));
 		TextView yStepsCountView = (TextView) findViewById(R.id.yStepsCountTextView);
-		yStepsCountView.setText("" + crossingThresholdCounts[1]  + "\\" + stepCounter.getStepCount(1));
+		yStepsCountView.setText("" + crossingThresholdCounts[1]  + "\\" + stepCounter.getAxisStepCount(1));
 		TextView zStepsCountView = (TextView) findViewById(R.id.zStepsCountTextView);
-		zStepsCountView.setText("" + crossingThresholdCounts[2]  + "\\" + stepCounter.getStepCount(2));
+		zStepsCountView.setText("" + crossingThresholdCounts[2]  + "\\" + stepCounter.getAxisStepCount(2));
 		
 		if (stepCounter.hasValidSteps(0)) {
 			xStepsCountView.setTextColor(Color.RED);
@@ -308,6 +314,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 		else {
 			maxP2PAxisView.setText("Z");
 		}
+		
+		TextView stepCounterView = (TextView) findViewById(R.id.stepsCounterValueTextView);
+		stepCounterView.setText("" + stepCounterValue);
 	}
 
 	private void plotData() {
@@ -383,7 +392,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(stepCounter.getAvgStepInterval(2)).append(CSV_DELIM)
 				.append(stepCounter.getStepIntervalVariance(2)).append(CSV_DELIM)
 				.append(stepCounter.hasValidSteps(2))
-				
+				/*
 				.append(CSV_DELIM)
 				.append(stepCounter.getFixedMinValue(0)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMaxValue(0)).append(CSV_DELIM)
@@ -391,7 +400,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 				.append(stepCounter.getFixedMaxValue(1)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMinValue(2)).append(CSV_DELIM)
 				.append(stepCounter.getFixedMaxValue(2)).append(CSV_DELIM)
-				/**/
+				*/
 				;
 
 			stepsDataWriter.println(sb.toString());
