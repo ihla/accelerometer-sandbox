@@ -12,7 +12,6 @@ public class StepCounter {
 	};
 
 	private int[] lastStepCount = new int[3];
-	float[] peak2peakValue = new float[3];
 	private int stepCounter;
 	
 	public StepCounter() {
@@ -24,31 +23,32 @@ public class StepCounter {
 	
 	public void countSteps(float[] accelerationSamples, long sampleTimeInMilis) {
 
-		updateStepCounters(accelerationSamples, sampleTimeInMilis);
+		updateStepDetectors(accelerationSamples, sampleTimeInMilis);
 		
+		int maxPeakAxis = -1;
 		float maxPeak2PeakValue = 0;
-		int selectedAxis = -1;
 		for (int i = 0; i < 3; i++) {
-			if (stepDetector[i].hasValidSteps()) {
-				float peak2peakValue = stepDetector[i].getFixedPeak2PeakValue();
-				if (peak2peakValue > maxPeak2PeakValue) {
-					selectedAxis = i;
-					maxPeak2PeakValue = peak2peakValue;
-				}
+			float peak2peakValue = stepDetector[i].getFixedPeak2PeakValue();
+			if (peak2peakValue > maxPeak2PeakValue) {
+				maxPeakAxis = i;
+				maxPeak2PeakValue = peak2peakValue;
 			}
 		}
 		
-		if (selectedAxis >= 0) {
-			stepCounter += stepDetector[selectedAxis].getStepCount() - lastStepCount[selectedAxis]; // add delta
-			// store counts for next delta calculation
-			for (int i = 0; i < 3; i++) {
-				lastStepCount[i] = stepDetector[i].getStepCount();
+		if (maxPeakAxis >= 0) {
+			if (stepDetector[maxPeakAxis].hasValidSteps()) {
+				stepCounter += stepDetector[maxPeakAxis].getStepCount() - lastStepCount[maxPeakAxis]; // add delta
+				
+				// store counts for next delta calculation
+				for (int i = 0; i < 3; i++) {
+					lastStepCount[i] = stepDetector[i].getStepCount();
+				}
 			}
 		} 
 
 	}
 
-	private void updateStepCounters(float[] accelerationSamples, long sampleTimeInMilis) {
+	private void updateStepDetectors(float[] accelerationSamples, long sampleTimeInMilis) {
 		for(int i = 0; i < 3; i++) {
 			stepDetector[i].update(accelerationSamples[i], sampleTimeInMilis);
 		}
