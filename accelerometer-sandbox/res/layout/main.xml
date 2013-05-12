@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/RelativeLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:stretchColumns="1" >
+
+    <TextView
+        android:id="@+id/stepsCountTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="40dp"
+        android:text="0"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textSize="@dimen/steps_count" />
+
+    <TextView
+        android:id="@+id/stepsTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/stepsCountTextView"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="15dp"
+        android:text="steps"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    <TextView
+        android:id="@+id/activeAxisTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/stepsTextView"
+        android:layout_below="@+id/stepsTextView"
+        android:layout_marginTop="22dp"
+        android:text="active axis"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    <TextView
+        android:id="@+id/activeAxisValueTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/activeAxisTextView"
+        android:layout_alignBottom="@+id/activeAxisTextView"
+        android:layout_centerHorizontal="true"
+        android:text="-"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <CheckBox
+        android:id="@+id/loggingCheckBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/activeAxisTextView"
+        android:layout_centerVertical="true"
+        android:text="logging" />
+
+    <Button
+        android:id="@+id/quitButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/loggingCheckBox"
+        android:layout_marginRight="40dp"
+        android:layout_marginTop="30dp"
+        android:text="quit" />
+
+    <Button
+        android:id="@+id/plotButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/quitButton"
+        android:layout_alignTop="@+id/loggingCheckBox"
+        android:text="plot" />
+
+</RelativeLayout>
