@@ -93,7 +93,7 @@ public class Main extends Activity {
 		
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
 		lbm.registerReceiver(accelerometerUpdateReceiver, 
-				new IntentFilter(getResources().getString(R.string.acc_update_action)));
+				new IntentFilter(getResources().getString(R.string.step_count_update_action)));
 
 	}
 
