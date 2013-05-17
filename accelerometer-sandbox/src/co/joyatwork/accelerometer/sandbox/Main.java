@@ -62,6 +62,7 @@ public class Main extends Activity {
 				// stop service implicitly
 				Intent intent = new Intent(Main.this, PedometerService.class);
 				stopService(intent);
+				setResult(RESULT_OK);
 				finish();
 				
 			}
