@@ -1,11 +1,16 @@
 package co.joyatwork.accelerometer.sandbox;
 
+import co.joyatwork.pedometer.android.PedometerService;
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
@@ -18,32 +23,29 @@ public class Main extends Activity {
 
 	private static final String TAG = "Main";
 
-	private final class AccelerometerUpdateReciever extends BroadcastReceiver {
+	private final class StepCountUpdateReciever extends BroadcastReceiver {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			Log.d(TAG, "AccelerometerUpdateReciever.onReceive " + intent.getAction());
-			/*
-			if (intent.hasExtra(getResources().getString(R.string.acc_x_value))) {
-				TextView xValueTextView = (TextView) findViewById(R.id.accXValTextView);
+			
+			Log.d(TAG, "StepCountUpdateReciever.onReceive " + intent.getAction());
+
+			if (intent.hasExtra(getResources().getString(R.string.step_count))) {
+				TextView xValueTextView = (TextView) findViewById(R.id.stepsCountTextView);
 				xValueTextView.setText(
-						intent.getExtras().getCharSequence(getResources().getString(R.string.acc_x_value)));
+						intent.getExtras().getCharSequence(getResources().getString(R.string.step_count)));
 			}
-			if (intent.hasExtra(getResources().getString(R.string.acc_y_value))) {
-				TextView xValueTextView = (TextView) findViewById(id.accYValTextView);
+
+			if (intent.hasExtra(getResources().getString(R.string.step_axis))) {
+				TextView xValueTextView = (TextView) findViewById(R.id.activeAxisValueTextView);
 				xValueTextView.setText(
-						intent.getExtras().getCharSequence(getResources().getString(R.string.acc_y_value)));
+						intent.getExtras().getCharSequence(getResources().getString(R.string.step_axis)));
 			}
-			if (intent.hasExtra(getResources().getString(R.string.acc_z_value))) {
-				TextView xValueTextView = (TextView) findViewById(id.accZValTextView);
-				xValueTextView.setText(
-						intent.getExtras().getCharSequence(getResources().getString(R.string.acc_z_value)));
-			}
-			*/
+
 		}
 		
 	}
-	private BroadcastReceiver accelerometerUpdateReceiver;
+	private BroadcastReceiver stepCountUpdateReceiver;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +58,12 @@ public class Main extends Activity {
 			
 			@Override
 			public void onClick(View v) {
-				// TODO Auto-generated method stub
+				cancelAllNotifications();
+				// stop service implicitly
+				Intent intent = new Intent(Main.this, PedometerService.class);
+				stopService(intent);
+				setResult(RESULT_OK);
+				finish();
 				
 			}
 		});
@@ -71,8 +78,12 @@ public class Main extends Activity {
 			}
 		});
 		
-		accelerometerUpdateReceiver = new AccelerometerUpdateReciever();
-
+		stepCountUpdateReceiver = new StepCountUpdateReciever();
+		
+		// start service explicitly
+		Intent intent = new Intent(Main.this, PedometerService.class);
+		startService(intent);
+		showNotification();
 	}
 
 	@Override
@@ -92,7 +103,7 @@ public class Main extends Activity {
 		super.onResume();
 		
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
-		lbm.registerReceiver(accelerometerUpdateReceiver, 
+		lbm.registerReceiver(stepCountUpdateReceiver, 
 				new IntentFilter(getResources().getString(R.string.step_count_update_action)));
 
 	}
@@ -102,7 +113,7 @@ public class Main extends Activity {
 		super.onPause();
 		
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
-		lbm.unregisterReceiver(accelerometerUpdateReceiver);
+		lbm.unregisterReceiver(stepCountUpdateReceiver);
 
 	}
 
@@ -111,5 +122,33 @@ public class Main extends Activity {
 		// TODO Auto-generated method stub
 		super.onSaveInstanceState(outState);
 	}
+
+	private void showNotification() {
+
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
+		.setSmallIcon(R.drawable.notification_icon)
+		.setContentTitle("Step Counter")
+		.setContentText("press to launch");
+	
+		Intent launcActivity = new Intent(this, Main.class);
+		
+		TaskStackBuilder backStackBuilder = TaskStackBuilder.create(this);
+		backStackBuilder.addParentStack(Main.class);
+		backStackBuilder.addNextIntent(launcActivity);
+		PendingIntent launchPendingActivity = backStackBuilder.getPendingIntent(0,
+				PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		notificationBuilder.setContentIntent(launchPendingActivity);
+		
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.notify(0, notificationBuilder.build());
+		
+	}
+
+	private void cancelAllNotifications() {
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancelAll();
+	}
+	
 
 }
