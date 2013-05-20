@@ -51,6 +51,8 @@ public class Main extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
+		Log.d(TAG, "onCreate()");
+		
 		setContentView(R.layout.main);
 		
 		Button quitButton = (Button) findViewById(R.id.quitButton);
@@ -80,16 +82,15 @@ public class Main extends Activity {
 		
 		stepCountUpdateReceiver = new StepCountUpdateReciever();
 		
-		// start service explicitly
-		Intent intent = new Intent(Main.this, PedometerService.class);
-		startService(intent);
-		showNotification();
 	}
 
 	@Override
 	protected void onDestroy() {
 		// TODO Auto-generated method stub
 		super.onDestroy();
+		
+		Log.d(TAG, "onDestroy()");
+
 	}
 
 	@Override
@@ -101,17 +102,26 @@ public class Main extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		
+
+		Log.d(TAG, "onResume()");
+
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
 		lbm.registerReceiver(stepCountUpdateReceiver, 
 				new IntentFilter(getResources().getString(R.string.step_count_update_action)));
+
+		// start service explicitly
+		Intent intent = new Intent(Main.this, PedometerService.class);
+		startService(intent);
+		showNotification();
 
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		
+
+		Log.d(TAG, "onPause()");
+
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
 		lbm.unregisterReceiver(stepCountUpdateReceiver);
 
