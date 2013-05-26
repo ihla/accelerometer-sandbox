@@ -1,6 +1,6 @@
 package co.joyatwork.accelerometer.sandbox;
 
-import co.joyatwork.pedometer.android.PedometerService;
+import co.joyatwork.pedometer.android.LoggingPedometerService;
 import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -62,7 +62,7 @@ public class Main extends Activity {
 			public void onClick(View v) {
 				cancelAllNotifications();
 				// stop service implicitly
-				Intent intent = new Intent(Main.this, PedometerService.class);
+				Intent intent = new Intent(Main.this, LoggingPedometerService.class);
 				stopService(intent);
 				setResult(RESULT_OK);
 				finish();
@@ -110,7 +110,7 @@ public class Main extends Activity {
 				new IntentFilter(getResources().getString(R.string.step_count_update_action)));
 
 		// start service explicitly
-		Intent intent = new Intent(Main.this, PedometerService.class);
+		Intent intent = new Intent(Main.this, LoggingPedometerService.class);
 		startService(intent);
 		showNotification();
 
