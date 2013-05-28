@@ -8,7 +8,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.LocalBroadcastManager;
@@ -46,6 +48,7 @@ public class Main extends Activity {
 		
 	}
 	private BroadcastReceiver stepCountUpdateReceiver;
+	private SharedPreferences settings;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +58,7 @@ public class Main extends Activity {
 		
 		setContentView(R.layout.main);
 		
+		settings = PreferenceManager.getDefaultSharedPreferences(this);
 		Button quitButton = (Button) findViewById(R.id.quitButton);
 		quitButton.setOnClickListener(new View.OnClickListener() {
 			
@@ -64,6 +68,7 @@ public class Main extends Activity {
 				// stop service implicitly
 				Intent intent = new Intent(Main.this, LoggingPedometerService.class);
 				stopService(intent);
+				storeLoggingPreferencesAndCommit(false); //disable logging on quit
 				setResult(RESULT_OK);
 				finish();
 				
@@ -75,13 +80,20 @@ public class Main extends Activity {
 			
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-				// TODO Auto-generated method stub
-				
+				storeLoggingPreferencesAndCommit(isChecked);
 			}
+
 		});
+		loggingCheckBox.setChecked(settings.getBoolean("logging", false));
 		
 		stepCountUpdateReceiver = new StepCountUpdateReciever();
 		
+	}
+
+	private void storeLoggingPreferencesAndCommit(boolean value) {
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putBoolean("logging", value);
+		editor.commit();
 	}
 
 	@Override
