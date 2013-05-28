@@ -138,7 +138,9 @@ public class Main extends Activity {
 		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
 		.setSmallIcon(R.drawable.notification_icon)
 		.setContentTitle("Step Counter")
-		.setContentText("press to launch");
+		.setContentText("press to launch")
+		.setOngoing(true)
+		;
 	
 		Intent launcActivity = new Intent(this, Main.class);
 		
