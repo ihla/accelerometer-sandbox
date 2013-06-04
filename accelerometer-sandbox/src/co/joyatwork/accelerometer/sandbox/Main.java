@@ -1,9 +1,6 @@
 package co.joyatwork.accelerometer.sandbox;
 
-import co.joyatwork.pedometer.android.LoggingPedometerService;
 import android.app.Activity;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,8 +8,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
@@ -64,9 +59,8 @@ public class Main extends Activity {
 			
 			@Override
 			public void onClick(View v) {
-				cancelAllNotifications();
 				// stop service implicitly
-				Intent intent = new Intent(Main.this, LoggingPedometerService.class);
+				Intent intent = new Intent(Main.this, AppPedometerService.class);
 				stopService(intent);
 				storeLoggingPreferencesAndCommit(false); //disable logging on quit
 				setResult(RESULT_OK);
@@ -122,9 +116,8 @@ public class Main extends Activity {
 				new IntentFilter(getResources().getString(R.string.step_count_update_action)));
 
 		// start service explicitly
-		Intent intent = new Intent(Main.this, LoggingPedometerService.class);
+		Intent intent = new Intent(Main.this, AppPedometerService.class);
 		startService(intent);
-		showNotification();
 
 	}
 
@@ -143,35 +136,6 @@ public class Main extends Activity {
 	protected void onSaveInstanceState(Bundle outState) {
 		// TODO Auto-generated method stub
 		super.onSaveInstanceState(outState);
-	}
-
-	private void showNotification() {
-
-		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-		.setSmallIcon(R.drawable.notification_icon)
-		.setContentTitle("Step Counter")
-		.setContentText("press to launch")
-		.setOngoing(true)
-		;
-	
-		Intent launcActivity = new Intent(this, Main.class);
-		
-		TaskStackBuilder backStackBuilder = TaskStackBuilder.create(this);
-		backStackBuilder.addParentStack(Main.class);
-		backStackBuilder.addNextIntent(launcActivity);
-		PendingIntent launchPendingActivity = backStackBuilder.getPendingIntent(0,
-				PendingIntent.FLAG_UPDATE_CURRENT);
-		
-		notificationBuilder.setContentIntent(launchPendingActivity);
-		
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(0, notificationBuilder.build());
-		
-	}
-
-	private void cancelAllNotifications() {
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.cancelAll();
 	}
 	
 

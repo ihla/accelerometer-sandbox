@@ -46,7 +46,7 @@
             </intent-filter>
         </activity>
         
-        <service android:name="co.joyatwork.pedometer.android.LoggingPedometerService" />
+        <service android:name=".AppPedometerService" />
         
     </application>
 
