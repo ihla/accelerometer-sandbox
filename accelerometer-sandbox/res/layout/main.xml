@@ -55,7 +55,7 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_marginBottom="18dp"
-        android:text="quit" />
+        android:text="stop service &amp; quit" />
 
     <CheckBox
         android:id="@+id/loggingCheckBox"
